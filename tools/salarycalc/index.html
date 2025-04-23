@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Калькулятор ЗП</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 0 20px; }
+        h1 { text-align: center; }
+        .input-group { margin-bottom: 10px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="number"] { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { padding: 10px 20px; font-size: 16px; margin-top: 10px; cursor: pointer; }
+        #results { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { padding: 8px; border: 1px solid #ccc; text-align: right; }
+        th { background: #f0f0f0; }
+        td.left { text-align: left; }
+        .toggle-link { cursor: pointer; color: #007BFF; text-decoration: underline; margin-bottom: 10px; display: inline-block; }
+    </style>
+</head>
+<body>
+    <h1>Калькулятор заработной платы</h1>
+    <div class="input-group">
+        <label for="grossMonthly">Gross в месяц (руб.)</label>
+        <input type="number" id="grossMonthly" placeholder="Например, 100000" />
+    </div>
+    <div class="input-group">
+        <label for="grossBonus">Gross премии в год (руб.)</label>
+        <input type="number" id="grossBonus" placeholder="Например, 200000" />
+    </div>
+    <div class="input-group">
+        <span class="toggle-link" onclick="toggleCompare()">Сравнить с другой зарплатой</span>
+    </div>
+    <div id="compareInputs" style="display: none;">
+        <div class="input-group">
+            <label for="grossMonthly2">Gross в месяц (вторая)</label>
+            <input type="number" id="grossMonthly2" />
+        </div>
+        <div class="input-group">
+            <label for="grossBonus2">Gross премии в год (вторая)</label>
+            <input type="number" id="grossBonus2" />
+        </div>
+    </div>
+    <button id="calculate">Рассчитать</button>
+
+    <div id="results"></div>
+
+    <script>
+        const taxBrackets = [
+            { upTo: 2400000, rate: 0.13 },
+            { upTo: 5000000, rate: 0.15 },
+            { upTo: 20000000, rate: 0.18 },
+            { upTo: 50000000, rate: 0.20 },
+            { upTo: Infinity, rate: 0.22 }
+        ];
+
+        function calculateIncome(grossMonthly, grossBonus) {
+            let cumulativeIncome = 0;
+            let netMonthlyList = [];
+            let monthDetails = [];
+
+            for (let month = 1; month <= 12; month++) {
+                let startIncome = cumulativeIncome;
+                let endIncome = cumulativeIncome + grossMonthly;
+                let { tax, bracketDetails } = calculateTaxDetails(startIncome, endIncome);
+                let net = grossMonthly - tax;
+                netMonthlyList.push(net);
+                cumulativeIncome = endIncome;
+                monthDetails.push({ monthIndex: month - 1, gross: grossMonthly, tax, cumulativeIncome, bracketDetails });
+            }
+
+            let startIncomeWithBonus = cumulativeIncome;
+            let endIncomeWithBonus = cumulativeIncome + grossBonus;
+            let { tax: bonusTax, bracketDetails: bonusDetails } = calculateTaxDetails(startIncomeWithBonus, endIncomeWithBonus);
+            let netBonus = grossBonus - bonusTax;
+            cumulativeIncome = endIncomeWithBonus;
+            monthDetails.push({ isBonus: true, gross: grossBonus, tax: bonusTax, cumulativeIncome, bracketDetails: bonusDetails });
+
+            const netAnnual = netMonthlyList.reduce((a, b) => a + b, 0);
+            const totalWithBonus = netAnnual + netBonus;
+
+            return { netMonthlyList, netAnnual, totalWithBonus, monthDetails, netBonus };
+        }
+
+        function calculateTaxDetails(incomeStart, incomeEnd) {
+            let tax = 0;
+            let previousLimit = 0;
+            let bracketDetails = [];
+
+            for (const bracket of taxBrackets) {
+                const taxableStart = Math.max(incomeStart, previousLimit);
+                const taxableEnd = Math.min(incomeEnd, bracket.upTo);
+
+                if (taxableEnd > taxableStart) {
+                    const taxedAmount = taxableEnd - taxableStart;
+                    const partialTax = taxedAmount * bracket.rate;
+                    tax += partialTax;
+                    bracketDetails.push({ rate: bracket.rate, taxedAmount, tax: partialTax });
+                }
+
+                if (incomeEnd <= bracket.upTo) break;
+                previousLimit = bracket.upTo;
+            }
+
+            return { tax, bracketDetails };
+        }
+
+        function toggleCompare() {
+            const section = document.getElementById('compareInputs');
+            const isHidden = section.style.display === 'none';
+            section.style.display = isHidden ? 'block' : 'none';
+        }
+
+        document.getElementById('calculate').addEventListener('click', () => {
+            const grossMonthly = parseFloat(document.getElementById('grossMonthly').value) || 0;
+            const grossBonus = parseFloat(document.getElementById('grossBonus').value) || 0;
+
+            const compareEnabled = document.getElementById('compareInputs').style.display === 'block';
+            const grossMonthly2 = parseFloat(document.getElementById('grossMonthly2')?.value) || 0;
+            const grossBonus2 = parseFloat(document.getElementById('grossBonus2')?.value) || 0;
+
+            const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+            const result1 = calculateIncome(grossMonthly, grossBonus);
+            const result2 = compareEnabled ? calculateIncome(grossMonthly2, grossBonus2) : null;
+
+            let table = '<table><tr><th>Месяц</th><th>Накоплено</th><th>Gross</th><th>Налог</th><th>Ставки</th><th>Чистыми</th>';
+            if (compareEnabled) table += '<th>Чистыми (2)</th>';
+            table += '</tr>';
+
+            for (let i = 0; i < result1.monthDetails.length; i++) {
+                const detail = result1.monthDetails[i];
+
+                if (detail.isBonus) {
+                    let rateText = detail.bracketDetails.map(b => `${(b.rate * 100).toFixed(0)}% → ${b.tax.toFixed(2)}₽`).join(', ');
+                    table += `
+                        <tr>
+                            <td class="left">Премия</td>
+                            <td>${detail.cumulativeIncome.toLocaleString()}</td>
+                            <td>${detail.gross.toLocaleString()}</td>
+                            <td>${detail.tax.toFixed(2)}</td>
+                            <td class="left">${rateText}</td>
+                            <td>${(detail.gross - detail.tax).toFixed(2)}</td>
+                            ${compareEnabled ? `<td>${(result2.netBonus).toFixed(2)}</td>` : ''}
+                        </tr>`;
+                } else {
+                    let net = result1.netMonthlyList[i];
+                    let rateText = detail.bracketDetails.map(b => `${(b.rate * 100).toFixed(0)}% → ${b.tax.toFixed(2)}₽`).join(', ');
+                    table += `
+                        <tr>
+                            <td class="left">${monthNames[i]}</td>
+                            <td>${detail.cumulativeIncome.toLocaleString()}</td>
+                            <td>${detail.gross.toLocaleString()}</td>
+                            <td>${detail.tax.toFixed(2)}</td>
+                            <td class="left">${rateText}</td>
+                            <td>${net.toFixed(2)}</td>
+                            ${compareEnabled ? `<td>${result2.netMonthlyList[i].toFixed(2)}</td>` : ''}
+                        </tr>`;
+                }
+            }
+            table += '</table>';
+
+            const avgWithoutBonus = result1.netAnnual / 12;
+            const avgWithBonus = result1.totalWithBonus / 12;
+            let summary = `
+                <p>Средний доход в месяц без премии: <strong>${avgWithoutBonus.toFixed(2)} руб.</strong></p>
+                <p>Средний доход в месяц с учётом премии: <strong>${avgWithBonus.toFixed(2)} руб.</strong></p>
+            `;
+
+            if (compareEnabled) {
+                const gross1 = grossMonthly * 12 + grossBonus;
+                const gross2 = grossMonthly2 * 12 + grossBonus2;
+                const net1 = result1.totalWithBonus;
+                const net2 = result2.totalWithBonus;
+
+                const grossDiff = ((gross2 - gross1) / gross1 * 100).toFixed(2);
+                const netDiff = ((net2 - net1) / net1 * 100).toFixed(2);
+
+                const grossAbsDiffYear = (gross2 - gross1).toFixed(2);
+                const netAbsDiffYear = (net2 - net1).toFixed(2);
+
+                const grossAbsDiffMonth = (grossAbsDiffYear / 12).toFixed(2);
+                const netAbsDiffMonth = (netAbsDiffYear / 12).toFixed(2);
+
+                summary += `
+                    <p><strong>Сравнение:</strong></p>
+                    <ul>
+                        <li>Разница в годовом gross: ${grossDiff}% (${grossAbsDiffYear}₽ в год, ${grossAbsDiffMonth}₽ в мес)</li>
+                        <li>Разница в годовом net: ${netDiff}% (${netAbsDiffYear}₽ в год, ${netAbsDiffMonth}₽ в мес)</li>
+                    </ul>
+                `;
+            }
+
+            document.getElementById('results').innerHTML = table + summary;
+        });
+    </script>
+</body>
+</html>
