@@ -326,7 +326,7 @@
                 const detail = result1.monthDetails[i];
 
                 if (detail.isBonus) {
-                    let rateText = detail.bracketDetails.map(b => `${(b.rate * 100).toFixed(0)}% → ${b.tax.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}₽`).join(', ');
+                    let rateText = detail.bracketDetails.map(b => `${(b.rate * 100).toFixed(0)}%&nbsp;→&nbsp;${b.tax.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}₽`).join(', ');
                     table += `
                         <tr>
                             <td class="left"><i class="fas fa-gift"></i> <strong>Премия</strong></td>
@@ -339,7 +339,7 @@
                         </tr>`;
                 } else {
                     let net = result1.netMonthlyList[i];
-                    let rateText = detail.bracketDetails.map(b => `${(b.rate * 100).toFixed(0)}% → ${b.tax.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}₽`).join(', ');
+                    let rateText = detail.bracketDetails.map(b => `${(b.rate * 100).toFixed(0)}%&nbsp;→&nbsp;${b.tax.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}₽`).join(', ');
                     table += `
                         <tr>
                             <td class="left">${monthNames[i]}</td>
@@ -359,6 +359,8 @@
             let summary = `
                 <div class="summary-card">
                     <h3><i class="fas fa-chart-line"></i> Итоги расчета</h3>
+                    <p>Общий годовой доход (gross): <strong>${(grossMonthly * 12 + grossBonus).toLocaleString('ru-RU')} руб.</strong></p>
+                    <p>Общий годовой доход (net): <strong>${result1.totalWithBonus.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} руб.</strong></p>
                     <p>Средний доход в месяц без премии: <strong>${avgWithoutBonus.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} руб.</strong></p>
                     <p>Средний доход в месяц с учётом премии: <strong>${avgWithBonus.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} руб.</strong></p>
             `;
@@ -384,6 +386,8 @@
                 summary += `
                     <div class="comparison">
                         <h3><i class="fas fa-balance-scale"></i> Сравнение предложений</h3>
+                        <p>Первое предложение: <strong>${gross1.toLocaleString('ru-RU')}₽ gross</strong>&nbsp;→&nbsp;<strong>${net1.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}₽ net</strong></p>
+                        <p>Второе предложение: <strong>${gross2.toLocaleString('ru-RU')}₽ gross</strong>&nbsp;→&nbsp;<strong>${net2.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}₽ net</strong></p>
                         <ul>
                             <li>Разница в годовом gross: <span class="${grossDiffClass}">${grossDiff}%</span> (${parseInt(grossAbsDiffYear).toLocaleString('ru-RU')}₽ в год, ${parseInt(grossAbsDiffMonth).toLocaleString('ru-RU')}₽ в мес)</li>
                             <li>Разница в годовом net: <span class="${netDiffClass}">${netDiff}%</span> (${parseInt(netAbsDiffYear).toLocaleString('ru-RU')}₽ в год, ${parseInt(netAbsDiffMonth).toLocaleString('ru-RU')}₽ в мес)</li>
