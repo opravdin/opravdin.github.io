@@ -4,47 +4,240 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Калькулятор ЗП</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 0 20px; }
-        h1 { text-align: center; }
-        .input-group { margin-bottom: 10px; }
-        label { display: block; margin-bottom: 5px; }
-        input[type="number"] { width: 100%; padding: 8px; box-sizing: border-box; }
-        button { padding: 10px 20px; font-size: 16px; margin-top: 10px; cursor: pointer; }
-        #results { margin-top: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { padding: 8px; border: 1px solid #ccc; text-align: right; }
-        th { background: #f0f0f0; }
-        td.left { text-align: left; }
-        .toggle-link { cursor: pointer; color: #007BFF; text-decoration: underline; margin-bottom: 10px; display: inline-block; }
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4cc9f0;
+            --text-color: #333;
+            --light-bg: #f8f9fa;
+            --border-color: #e0e0e0;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --hover-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        body {
+            font-family: 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: var(--card-shadow);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 15px;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            margin-top: 15px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background-color 0.3s, transform 0.2s;
+            display: block;
+            width: 100%;
+        }
+        
+        button:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        #results {
+            margin-top: 30px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: right;
+        }
+        
+        th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 500;
+        }
+        
+        tr:nth-child(even) {
+            background-color: var(--light-bg);
+        }
+        
+        tr:hover {
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+        
+        td.left {
+            text-align: left;
+        }
+        
+        .toggle-link {
+            cursor: pointer;
+            color: var(--primary-color);
+            text-decoration: none;
+            margin-bottom: 15px;
+            display: inline-flex;
+            align-items: center;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .toggle-link:hover {
+            color: var(--secondary-color);
+        }
+        
+        .toggle-link i {
+            margin-right: 8px;
+        }
+        
+        .summary-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .summary-card p {
+            margin: 10px 0;
+        }
+        
+        .summary-card strong {
+            color: var(--primary-color);
+        }
+        
+        .comparison {
+            background-color: var(--light-bg);
+            border-left: 4px solid var(--accent-color);
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .comparison ul {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+        
+        .comparison li {
+            margin-bottom: 8px;
+        }
+        
+        .positive {
+            color: var(--success-color);
+        }
+        
+        .negative {
+            color: var(--warning-color);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>Калькулятор заработной платы</h1>
-    <div class="input-group">
-        <label for="grossMonthly">Gross в месяц (руб.)</label>
-        <input type="number" id="grossMonthly" placeholder="Например, 100000" />
-    </div>
-    <div class="input-group">
-        <label for="grossBonus">Gross премии в год (руб.)</label>
-        <input type="number" id="grossBonus" placeholder="Например, 200000" />
-    </div>
-    <div class="input-group">
-        <span class="toggle-link" onclick="toggleCompare()">Сравнить с другой зарплатой</span>
-    </div>
-    <div id="compareInputs" style="display: none;">
+    <div class="container">
+        <h1><i class="fas fa-calculator"></i> Калькулятор заработной платы</h1>
+        
         <div class="input-group">
-            <label for="grossMonthly2">Gross в месяц (вторая)</label>
-            <input type="number" id="grossMonthly2" />
+            <label for="grossMonthly"><i class="fas fa-money-bill-wave"></i> Gross в месяц (руб.)</label>
+            <input type="number" id="grossMonthly" placeholder="Например, 100000" />
         </div>
+        
         <div class="input-group">
-            <label for="grossBonus2">Gross премии в год (вторая)</label>
-            <input type="number" id="grossBonus2" />
+            <label for="grossBonus"><i class="fas fa-gift"></i> Gross премии в год (руб.)</label>
+            <input type="number" id="grossBonus" placeholder="Например, 200000" />
         </div>
+        
+        <div class="input-group">
+            <span class="toggle-link" onclick="toggleCompare()">
+                <i class="fas fa-exchange-alt"></i> Сравнить с другой зарплатой
+            </span>
+        </div>
+        
+        <div id="compareInputs" style="display: none;">
+            <div class="input-group">
+                <label for="grossMonthly2"><i class="fas fa-money-bill-wave"></i> Gross в месяц (вторая)</label>
+                <input type="number" id="grossMonthly2" placeholder="Например, 120000" />
+            </div>
+            <div class="input-group">
+                <label for="grossBonus2"><i class="fas fa-gift"></i> Gross премии в год (вторая)</label>
+                <input type="number" id="grossBonus2" placeholder="Например, 240000" />
+            </div>
+        </div>
+        
+        <button id="calculate"><i class="fas fa-calculator"></i> Рассчитать</button>
     </div>
-    <button id="calculate">Рассчитать</button>
 
-    <div id="results"></div>
+    <div id="results" class="container" style="display: none;"></div>
 
     <script>
         const taxBrackets = [
@@ -133,29 +326,29 @@
                 const detail = result1.monthDetails[i];
 
                 if (detail.isBonus) {
-                    let rateText = detail.bracketDetails.map(b => `${(b.rate * 100).toFixed(0)}% → ${b.tax.toFixed(2)}₽`).join(', ');
+                    let rateText = detail.bracketDetails.map(b => `${(b.rate * 100).toFixed(0)}% → ${b.tax.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}₽`).join(', ');
                     table += `
                         <tr>
-                            <td class="left">Премия</td>
-                            <td>${detail.cumulativeIncome.toLocaleString()}</td>
-                            <td>${detail.gross.toLocaleString()}</td>
-                            <td>${detail.tax.toFixed(2)}</td>
+                            <td class="left"><i class="fas fa-gift"></i> <strong>Премия</strong></td>
+                            <td>${detail.cumulativeIncome.toLocaleString('ru-RU')}</td>
+                            <td>${detail.gross.toLocaleString('ru-RU')}</td>
+                            <td>${detail.tax.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                             <td class="left">${rateText}</td>
-                            <td>${(detail.gross - detail.tax).toFixed(2)}</td>
-                            ${compareEnabled ? `<td>${(result2.netBonus).toFixed(2)}</td>` : ''}
+                            <td><strong>${(detail.gross - detail.tax).toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>
+                            ${compareEnabled ? `<td><strong>${(result2.netBonus).toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></td>` : ''}
                         </tr>`;
                 } else {
                     let net = result1.netMonthlyList[i];
-                    let rateText = detail.bracketDetails.map(b => `${(b.rate * 100).toFixed(0)}% → ${b.tax.toFixed(2)}₽`).join(', ');
+                    let rateText = detail.bracketDetails.map(b => `${(b.rate * 100).toFixed(0)}% → ${b.tax.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}₽`).join(', ');
                     table += `
                         <tr>
                             <td class="left">${monthNames[i]}</td>
-                            <td>${detail.cumulativeIncome.toLocaleString()}</td>
-                            <td>${detail.gross.toLocaleString()}</td>
-                            <td>${detail.tax.toFixed(2)}</td>
+                            <td>${detail.cumulativeIncome.toLocaleString('ru-RU')}</td>
+                            <td>${detail.gross.toLocaleString('ru-RU')}</td>
+                            <td>${detail.tax.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                             <td class="left">${rateText}</td>
-                            <td>${net.toFixed(2)}</td>
-                            ${compareEnabled ? `<td>${result2.netMonthlyList[i].toFixed(2)}</td>` : ''}
+                            <td>${net.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                            ${compareEnabled ? `<td>${result2.netMonthlyList[i].toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>` : ''}
                         </tr>`;
                 }
             }
@@ -164,8 +357,10 @@
             const avgWithoutBonus = result1.netAnnual / 12;
             const avgWithBonus = result1.totalWithBonus / 12;
             let summary = `
-                <p>Средний доход в месяц без премии: <strong>${avgWithoutBonus.toFixed(2)} руб.</strong></p>
-                <p>Средний доход в месяц с учётом премии: <strong>${avgWithBonus.toFixed(2)} руб.</strong></p>
+                <div class="summary-card">
+                    <h3><i class="fas fa-chart-line"></i> Итоги расчета</h3>
+                    <p>Средний доход в месяц без премии: <strong>${avgWithoutBonus.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} руб.</strong></p>
+                    <p>Средний доход в месяц с учётом премии: <strong>${avgWithBonus.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} руб.</strong></p>
             `;
 
             if (compareEnabled) {
@@ -183,16 +378,25 @@
                 const grossAbsDiffMonth = (grossAbsDiffYear / 12).toFixed(2);
                 const netAbsDiffMonth = (netAbsDiffYear / 12).toFixed(2);
 
+                const grossDiffClass = grossDiff > 0 ? 'positive' : 'negative';
+                const netDiffClass = netDiff > 0 ? 'positive' : 'negative';
+
                 summary += `
-                    <p><strong>Сравнение:</strong></p>
-                    <ul>
-                        <li>Разница в годовом gross: ${grossDiff}% (${grossAbsDiffYear}₽ в год, ${grossAbsDiffMonth}₽ в мес)</li>
-                        <li>Разница в годовом net: ${netDiff}% (${netAbsDiffYear}₽ в год, ${netAbsDiffMonth}₽ в мес)</li>
-                    </ul>
+                    <div class="comparison">
+                        <h3><i class="fas fa-balance-scale"></i> Сравнение предложений</h3>
+                        <ul>
+                            <li>Разница в годовом gross: <span class="${grossDiffClass}">${grossDiff}%</span> (${parseInt(grossAbsDiffYear).toLocaleString('ru-RU')}₽ в год, ${parseInt(grossAbsDiffMonth).toLocaleString('ru-RU')}₽ в мес)</li>
+                            <li>Разница в годовом net: <span class="${netDiffClass}">${netDiff}%</span> (${parseInt(netAbsDiffYear).toLocaleString('ru-RU')}₽ в год, ${parseInt(netAbsDiffMonth).toLocaleString('ru-RU')}₽ в мес)</li>
+                        </ul>
+                    </div>
                 `;
             }
+            
+            summary += `</div>`;
 
-            document.getElementById('results').innerHTML = table + summary;
+            const resultsElement = document.getElementById('results');
+            resultsElement.innerHTML = table + summary;
+            resultsElement.style.display = 'block';
         });
     </script>
 </body>
