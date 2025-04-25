@@ -1,0 +1,45 @@
+/* Specific styles for Salary Calculator */
+
+.toggle-link {
+    cursor: pointer;
+    color: var(--primary-color);
+    text-decoration: none;
+    margin-bottom: 15px;
+    display: inline-flex;
+    align-items: center;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.toggle-link:hover {
+    color: var(--secondary-color);
+}
+
+.toggle-link i {
+    margin-right: 8px;
+}
+
+.comparison {
+    background-color: var(--light-bg);
+    border-left: 4px solid var(--accent-color);
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 0 8px 8px 0;
+}
+
+.comparison ul {
+    padding-left: 20px;
+    margin: 10px 0;
+}
+
+.comparison li {
+    margin-bottom: 8px;
+}
+
+.positive {
+    color: var(--success-color);
+}
+
+.negative {
+    color: var(--warning-color);
+}

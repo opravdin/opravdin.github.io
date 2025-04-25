@@ -1,0 +1,118 @@
+/* Specific styles for Party Calculator */
+
+.guest-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+.guest-name {
+    flex: 2;
+}
+
+.guest-expense {
+    flex: 1;
+}
+
+.guest-plus-ones {
+    flex: 0.5;
+    min-width: 60px;
+}
+
+.guest-action {
+    flex: 0 0 auto;
+}
+
+.guest-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 10px;
+    font-weight: 500;
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+}
+
+.mode-selection {
+    margin: 30px 0;
+    padding: 20px;
+    background-color: var(--light-bg);
+    border-radius: 8px;
+}
+
+.radio-group {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.radio-option input {
+    margin-right: 8px;
+}
+
+.budget-keeper-selection {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.payment-instruction {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: var(--light-bg);
+    border-radius: 6px;
+}
+
+.payment-instruction i {
+    margin: 0 10px;
+    color: var(--primary-color);
+}
+
+.payment-amount {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 30px;
+    color: #888;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    color: var(--border-color);
+}
+
+/* Responsive adjustments for party calculator */
+@media (max-width: 768px) {
+    .guest-header {
+        display: none; /* Hide headers on mobile */
+    }
+    
+    .guest-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .guest-action {
+        align-self: flex-end;
+    }
+    
+    .radio-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
