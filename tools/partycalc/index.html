@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Калькулятор расходов на вечеринку</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4cc9f0;
+            --text-color: #333;
+            --light-bg: #f8f9fa;
+            --border-color: #e0e0e0;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --danger-color: #f44336;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --hover-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        body {
+            font-family: 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: var(--card-shadow);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+        
+        .description {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #666;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 15px;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            margin-top: 15px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background-color 0.3s, transform 0.2s;
+            display: block;
+            width: 100%;
+        }
+        
+        button:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+        }
+        
+        .btn-danger:hover {
+            background-color: #d32f2f;
+        }
+        
+        .btn-add {
+            background-color: var(--success-color);
+        }
+        
+        .btn-add:hover {
+            background-color: #388e3c;
+        }
+        
+        .btn-remove {
+            background-color: var(--warning-color);
+            width: auto;
+            padding: 8px 12px;
+            font-size: 14px;
+            margin-top: 0;
+        }
+        
+        .btn-remove:hover {
+            background-color: #f57c00;
+        }
+        
+        #results {
+            margin-top: 30px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: right;
+        }
+        
+        th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 500;
+        }
+        
+        tr:nth-child(even) {
+            background-color: var(--light-bg);
+        }
+        
+        tr:hover {
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+        
+        td.left {
+            text-align: left;
+        }
+        
+        .guest-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+        
+        .guest-name {
+            flex: 2;
+        }
+        
+        .guest-expense {
+            flex: 1;
+        }
+        
+        .guest-plus-ones {
+            flex: 0.5;
+            min-width: 60px;
+        }
+        
+        .guest-action {
+            flex: 0 0 auto;
+        }
+        
+        .guest-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+            font-weight: 500;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+        
+        .mode-selection {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: var(--light-bg);
+            border-radius: 8px;
+        }
+        
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .radio-option {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .radio-option input {
+            margin-right: 8px;
+        }
+        
+        .budget-keeper-selection {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .summary-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: var(--card-shadow);
+        }
+        
+        .summary-card p {
+            margin: 10px 0;
+        }
+        
+        .summary-card strong {
+            color: var(--primary-color);
+        }
+        
+        .payment-instruction {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: var(--light-bg);
+            border-radius: 6px;
+        }
+        
+        .payment-instruction i {
+            margin: 0 10px;
+            color: var(--primary-color);
+        }
+        
+        .payment-amount {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #888;
+        }
+        
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: var(--border-color);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .guest-header {
+                display: none; /* Hide headers on mobile */
+            }
+            
+            .guest-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            
+            .guest-action {
+                align-self: flex-end;
+            }
+            
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            .radio-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-glass-cheers"></i> Калькулятор расходов на вечеринку</h1>
+        <p class="description">Добавьте гостей и их расходы, чтобы рассчитать, кто кому должен заплатить</p>
+        
+        <div id="guests-container">
+            <h2><i class="fas fa-users"></i> Список гостей</h2>
+            <div class="guest-header">
+                <div class="guest-name">Имя</div>
+                <div class="guest-expense">Расходы (₽)</div>
+                <div class="guest-plus-ones">+1</div>
+                <div class="guest-action"></div>
+            </div>
+            <div id="guest-list">
+                <!-- Guest rows will be added here dynamically -->
+                <div class="empty-state" id="empty-guests">
+                    <i class="fas fa-user-plus"></i>
+                    <p>Добавьте гостей, чтобы начать расчет</p>
+                </div>
+            </div>
+            <button id="add-guest" class="btn-add"><i class="fas fa-plus"></i> Добавить гостя</button>
+        </div>
+        
+        <div class="mode-selection">
+            <h2><i class="fas fa-cog"></i> Режим расчета</h2>
+            <div class="description" style="text-align: left; margin-top: 15px;">
+                <p><strong>Режимы расчета:</strong></p>
+                <ul style="margin-top: 5px; margin-bottom: 15px;">
+                    <li><strong>Прямой расчет:</strong> Каждый гость платит свою долю напрямую другим гостям. <em>Идеально для небольших групп или когда только 1 человек имел расходы.</em></li>
+                    <li><strong>Через казначея:</strong> Гости платят или получают деньги через выбранного казначея. <em>Лучше для больших компаний, когда плативших несколько. Все скидываются казначею, казначей распределяет деньги по расходовавшим</em></li>
+                </ul>
+            </div>
+            <div class="radio-group">
+                <label class="radio-option">
+                    <input type="radio" name="calculation-mode" value="direct" checked>
+                    <span>Прямой расчет</span>
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="calculation-mode" value="aggregated">
+                    <span>Через казначея</span>
+                </label>
+            </div>
+            <div id="budget-keeper-container" class="budget-keeper-selection" style="display: none;">
+                <label for="budget-keeper">Выберите казначея:</label>
+                <select id="budget-keeper" class="form-control">
+                    <option value="">Выберите гостя</option>
+                </select>
+            </div>
+            <div class="description" style="text-align: left; margin-top: 15px;">
+                <p><i class="fas fa-info-circle"></i> <strong>+1 режим:</strong> Если гость приводит с собой дополнительных людей (семью, партнеров), укажите их количество в поле "+1". Основной гость платит за всех своих +1.</p>
+            </div>
+        </div>
+        
+        <button id="calculate"><i class="fas fa-calculator"></i> Рассчитать</button>
+        <button id="clear-storage" class="btn-danger"><i class="fas fa-trash"></i> Очистить данные</button>
+    </div>
+    
+    <div id="results" class="container" style="display: none;">
+        <!-- Results will be displayed here -->
+    </div>
+    
+    <script>
+        // Data model
+        let partyData = {
+            guests: [],
+            mode: 'direct',
+            budgetKeeper: null
+        };
+        
+        // DOM elements
+        const guestListEl = document.getElementById('guest-list');
+        const emptyGuestsEl = document.getElementById('empty-guests');
+        const addGuestBtn = document.getElementById('add-guest');
+        const calculateBtn = document.getElementById('calculate');
+        const clearStorageBtn = document.getElementById('clear-storage');
+        const resultsEl = document.getElementById('results');
+        const modeRadios = document.getElementsByName('calculation-mode');
+        const budgetKeeperContainer = document.getElementById('budget-keeper-container');
+        const budgetKeeperSelect = document.getElementById('budget-keeper');
+        
+        // Load data from localStorage
+        function loadFromStorage() {
+            const savedData = localStorage.getItem('partyCalcData');
+            if (savedData) {
+                try {
+                    partyData = JSON.parse(savedData);
+                    renderGuestList();
+                    updateBudgetKeeperOptions();
+                    
+                    // Set the correct mode
+                    for (const radio of modeRadios) {
+                        if (radio.value === partyData.mode) {
+                            radio.checked = true;
+                            break;
+                        }
+                    }
+                    
+                    // Show/hide budget keeper selection
+                    budgetKeeperContainer.style.display = partyData.mode === 'aggregated' ? 'block' : 'none';
+                    
+                    // Set the budget keeper if in aggregated mode
+                    if (partyData.mode === 'aggregated' && partyData.budgetKeeper !== null) {
+                        budgetKeeperSelect.value = partyData.budgetKeeper;
+                    }
+                } catch (e) {
+                    console.error('Error loading data from localStorage:', e);
+                    clearStorage();
+                }
+            }
+        }
+        
+        // Save data to localStorage
+        function saveToStorage() {
+            localStorage.setItem('partyCalcData', JSON.stringify(partyData));
+        }
+        
+        // Clear localStorage
+        function clearStorage() {
+            localStorage.removeItem('partyCalcData');
+            partyData = {
+                guests: [],
+                mode: 'direct',
+                budgetKeeper: null
+            };
+            renderGuestList();
+            updateBudgetKeeperOptions();
+            resultsEl.style.display = 'none';
+            
+            // Reset mode to direct
+            modeRadios[0].checked = true;
+            budgetKeeperContainer.style.display = 'none';
+        }
+        
+        // Add a new guest
+        function addGuest() {
+            partyData.guests.push({
+                name: '',
+                expenses: 0,
+                plusOnes: 0
+            });
+            renderGuestList();
+            updateBudgetKeeperOptions();
+            saveToStorage();
+        }
+        
+        // Remove a guest
+        function removeGuest(index) {
+            partyData.guests.splice(index, 1);
+            
+            // If the budget keeper was removed, reset it
+            if (partyData.budgetKeeper === index) {
+                partyData.budgetKeeper = null;
+            } 
+            // If the budget keeper was after the removed guest, adjust the index
+            else if (partyData.budgetKeeper > index) {
+                partyData.budgetKeeper--;
+            }
+            
+            renderGuestList();
+            updateBudgetKeeperOptions();
+            saveToStorage();
+        }
+        
+        // Update guest name
+        function updateGuestName(index, name) {
+            partyData.guests[index].name = name;
+            updateBudgetKeeperOptions();
+            saveToStorage();
+        }
+        
+        // Update guest expenses
+        function updateGuestExpenses(index, expenses) {
+            partyData.guests[index].expenses = parseFloat(expenses) || 0;
+            saveToStorage();
+        }
+        
+        // Update guest plus ones
+        function updateGuestPlusOnes(index, plusOnes) {
+            partyData.guests[index].plusOnes = parseInt(plusOnes) || 0;
+            saveToStorage();
+        }
+        
+        // Render the guest list
+        function renderGuestList() {
+            // Clear the guest list
+            while (guestListEl.firstChild) {
+                guestListEl.removeChild(guestListEl.firstChild);
+            }
+            
+            // Show empty state if no guests
+            if (partyData.guests.length === 0) {
+                guestListEl.appendChild(emptyGuestsEl);
+                return;
+            }
+            
+            // Hide empty state
+            if (emptyGuestsEl.parentNode === guestListEl) {
+                guestListEl.removeChild(emptyGuestsEl);
+            }
+            
+            // Add each guest
+            partyData.guests.forEach((guest, index) => {
+                const guestRow = document.createElement('div');
+                guestRow.className = 'guest-row';
+                
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.className = 'guest-name';
+                nameInput.placeholder = 'Имя гостя';
+                nameInput.value = guest.name;
+                nameInput.addEventListener('input', (e) => {
+                    updateGuestName(index, e.target.value);
+                });
+                
+                const expenseInput = document.createElement('input');
+                expenseInput.type = 'number';
+                expenseInput.className = 'guest-expense';
+                expenseInput.placeholder = 'Расходы (₽)';
+                expenseInput.value = guest.expenses;
+                expenseInput.addEventListener('input', (e) => {
+                    updateGuestExpenses(index, e.target.value);
+                });
+                
+                const plusOnesInput = document.createElement('input');
+                plusOnesInput.type = 'number';
+                plusOnesInput.className = 'guest-plus-ones';
+                plusOnesInput.placeholder = '+1';
+                plusOnesInput.min = '0';
+                plusOnesInput.value = guest.plusOnes || 0;
+                plusOnesInput.title = 'Количество дополнительных гостей (+1)';
+                plusOnesInput.addEventListener('input', (e) => {
+                    updateGuestPlusOnes(index, e.target.value);
+                });
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn-remove guest-action';
+                removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                removeBtn.addEventListener('click', () => {
+                    removeGuest(index);
+                });
+                
+                guestRow.appendChild(nameInput);
+                guestRow.appendChild(expenseInput);
+                guestRow.appendChild(plusOnesInput);
+                guestRow.appendChild(removeBtn);
+                
+                guestListEl.appendChild(guestRow);
+            });
+        }
+        
+        // Update budget keeper options
+        function updateBudgetKeeperOptions() {
+            // Clear the select options
+            budgetKeeperSelect.innerHTML = '<option value="">Выберите гостя</option>';
+            
+            // Add each guest as an option
+            partyData.guests.forEach((guest, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = guest.name || `Гость ${index + 1}`;
+                budgetKeeperSelect.appendChild(option);
+            });
+            
+            // Set the selected option
+            if (partyData.budgetKeeper !== null) {
+                budgetKeeperSelect.value = partyData.budgetKeeper;
+            }
+        }
+        
+        // Calculate payments
+        function calculatePayments() {
+            // Check if there are at least 2 guests
+            if (partyData.guests.length < 2) {
+                alert('Добавьте хотя бы двух гостей для расчета');
+                return;
+            }
+            
+            // Check if all guests have names
+            const emptyNames = partyData.guests.some(guest => !guest.name.trim());
+            if (emptyNames) {
+                alert('Пожалуйста, укажите имена всех гостей');
+                return;
+            }
+            
+            // Check if budget keeper is selected in aggregated mode
+            if (partyData.mode === 'aggregated' && partyData.budgetKeeper === null) {
+                alert('Выберите казначея для режима "Через казначея"');
+                return;
+            }
+            
+            // Calculate total expenses
+            const totalExpenses = partyData.guests.reduce((sum, guest) => sum + guest.expenses, 0);
+            
+            // Calculate total number of people (including +1s)
+            const totalPeople = partyData.guests.reduce((sum, guest) => sum + 1 + (guest.plusOnes || 0), 0);
+            
+            // Calculate per-person share
+            const perPersonShare = totalExpenses / totalPeople;
+            
+            let payments = [];
+            
+            if (partyData.mode === 'direct') {
+                // Direct mode calculations
+                const debtors = partyData.guests
+                    .map((guest, index) => {
+                        // Each guest pays for themselves and their +1s
+                        const totalShare = perPersonShare * (1 + (guest.plusOnes || 0));
+                        return {
+                            index,
+                            name: guest.name,
+                            balance: totalShare - guest.expenses,
+                            plusOnes: guest.plusOnes || 0
+                        };
+                    })
+                    .filter(guest => guest.balance > 0)
+                    .sort((a, b) => b.balance - a.balance);
+                
+                const creditors = partyData.guests
+                    .map((guest, index) => {
+                        // Each guest pays for themselves and their +1s
+                        const totalShare = perPersonShare * (1 + (guest.plusOnes || 0));
+                        return {
+                            index,
+                            name: guest.name,
+                            balance: guest.expenses - totalShare,
+                            plusOnes: guest.plusOnes || 0
+                        };
+                    })
+                    .filter(guest => guest.balance > 0)
+                    .sort((a, b) => b.balance - a.balance);
+                
+                // Calculate payments
+                for (const debtor of debtors) {
+                    let remainingDebt = debtor.balance;
+                    
+                    for (let i = 0; i < creditors.length && remainingDebt > 0; i++) {
+                        const creditor = creditors[i];
+                        
+                        if (creditor.balance > 0) {
+                            const payment = Math.min(remainingDebt, creditor.balance);
+                            
+                            payments.push({
+                                from: debtor.index,
+                                to: creditor.index,
+                                amount: payment
+                            });
+                            
+                            remainingDebt -= payment;
+                            creditors[i].balance -= payment;
+                        }
+                    }
+                }
+            } else {
+                // Aggregated mode calculations
+                const keeperIndex = parseInt(partyData.budgetKeeper);
+                
+                partyData.guests.forEach((guest, index) => {
+                    if (index !== keeperIndex) {
+                        // Each guest pays for themselves and their +1s
+                        const totalShare = perPersonShare * (1 + (guest.plusOnes || 0));
+                        const balance = totalShare - guest.expenses;
+                        
+                        if (balance > 0) {
+                            // Guest owes money to the keeper
+                            payments.push({
+                                from: index,
+                                to: keeperIndex,
+                                amount: balance
+                            });
+                        } else if (balance < 0) {
+                            // Keeper owes money to the guest
+                            payments.push({
+                                from: keeperIndex,
+                                to: index,
+                                amount: -balance
+                            });
+                        }
+                    }
+                });
+            }
+            
+            // Round payments to 2 decimal places
+            payments = payments.map(payment => ({
+                ...payment,
+                amount: Math.round(payment.amount * 100) / 100
+            }));
+            
+            // Filter out very small payments (less than 1 ruble)
+            payments = payments.filter(payment => payment.amount >= 1);
+            
+            // Display results
+            displayResults(totalExpenses, perPersonShare, payments, totalPeople);
+        }
+        
+        // Display calculation results
+        function displayResults(totalExpenses, perPersonShare, payments, totalPeople) {
+            let html = `
+                <h2><i class="fas fa-receipt"></i> Результаты расчета</h2>
+                <div class="summary-card">
+                    <p>Общие расходы: <strong>${totalExpenses.toLocaleString('ru-RU')} ₽</strong></p>
+                    <p>Всего гостей (включая +1): <strong>${totalPeople}</strong></p>
+                    <p>Доля на человека: <strong>${perPersonShare.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₽</strong></p>
+                </div>
+            `;
+            
+            if (payments.length === 0) {
+                html += `
+                    <div class="summary-card">
+                        <p>Все гости потратили одинаковую сумму. Никаких платежей не требуется.</p>
+                    </div>
+                `;
+            } else {
+                html += `<h3><i class="fas fa-exchange-alt"></i> Кто кому должен заплатить:</h3>`;
+                
+                payments.forEach(payment => {
+                    const fromGuest = partyData.guests[payment.from];
+                    const toGuest = partyData.guests[payment.to];
+                    
+                    // Display name with +1 count if applicable
+                    const fromGuestDisplay = fromGuest.plusOnes > 0
+                        ? `${fromGuest.name} (+${fromGuest.plusOnes})`
+                        : fromGuest.name;
+                    
+                    const toGuestDisplay = toGuest.plusOnes > 0
+                        ? `${toGuest.name} (+${toGuest.plusOnes})`
+                        : toGuest.name;
+                    
+                    html += `
+                        <div class="payment-instruction">
+                            <span>${fromGuestDisplay}</span>
+                            <i class="fas fa-arrow-right" style="color: var(--primary-color); font-size: 1.2em; margin: 0 10px;"></i>
+                            <span>${toGuestDisplay}</span>
+                            <i class="fas fa-ruble-sign"></i>
+                            <span class="payment-amount">${payment.amount.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        </div>
+                    `;
+                });
+            }
+            
+            resultsEl.innerHTML = html;
+            resultsEl.style.display = 'block';
+        }
+        
+        // Event listeners
+        addGuestBtn.addEventListener('click', addGuest);
+        
+        calculateBtn.addEventListener('click', calculatePayments);
+        
+        clearStorageBtn.addEventListener('click', () => {
+            if (confirm('Вы уверены, что хотите очистить все данные?')) {
+                clearStorage();
+            }
+        });
+        
+        // Mode selection change
+        for (const radio of modeRadios) {
+            radio.addEventListener('change', (e) => {
+                partyData.mode = e.target.value;
+                budgetKeeperContainer.style.display = partyData.mode === 'aggregated' ? 'block' : 'none';
+                saveToStorage();
+            });
+        }
+        
+        // Budget keeper selection change
+        budgetKeeperSelect.addEventListener('change', (e) => {
+            partyData.budgetKeeper = e.target.value ? parseInt(e.target.value) : null;
+            saveToStorage();
+        });
+        
+        // Initialize
+        loadFromStorage();
+        
+        // Add initial guests if none exist
+        if (partyData.guests.length === 0) {
+            addGuest();
+            addGuest();
+        }
+    </script>
+</body>
+</html>
