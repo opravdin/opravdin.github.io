@@ -8,16 +8,45 @@
 }
 
 .guest-name {
-    flex: 2;
+    flex: 1.5;
 }
 
 .guest-expense {
+    flex: 1.5;
+}
+
+.expense-hint {
+    font-size: 0.75em;
+    color: #888;
+    font-weight: normal;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.expense-container {
     flex: 1;
+    position: relative;
+}
+
+.expense-input-wrapper {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.expense-result {
+    font-size: 0.85em;
+    color: var(--primary-color);
+    font-weight: 500;
+    margin-left: 8px;
+    white-space: nowrap;
 }
 
 .guest-plus-ones {
-    flex: 0.5;
-    min-width: 60px;
+    flex: 0.3;
+    min-width: 40px;
 }
 
 .guest-action {
@@ -26,13 +55,34 @@
 
 .guest-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 10px;
     gap: 10px;
     font-weight: 500;
     color: var(--primary-color);
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 8px;
+}
+
+.guest-header > div {
+    padding-top: 4px;
+}
+
+.guest-header .guest-name {
+    flex: 1.5;
+}
+
+.guest-header .guest-expense {
+    flex: 1.5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.guest-header .guest-plus-ones {
+    flex: 0.3;
+    min-width: 40px;
+    text-align: center;
 }
 
 .mode-selection {
@@ -97,6 +147,9 @@
 
 /* Responsive adjustments for party calculator */
 @media (max-width: 768px) {
+    .expense-hint {
+        display: none; /* Hide hint on mobile to save space */
+    }
     .guest-header {
         display: none; /* Hide headers on mobile */
     }

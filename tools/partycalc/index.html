@@ -18,7 +18,10 @@
             <h2><i class="fas fa-users"></i> Список гостей</h2>
             <div class="guest-header">
                 <div class="guest-name">Имя</div>
-                <div class="guest-expense">Расходы (₽)</div>
+                <div class="guest-expense">
+                    <div>Расходы (₽)</div>
+                    <div class="expense-hint">(можно вводить формулы, например: 1000+500)</div>
+                </div>
                 <div class="guest-plus-ones">+1</div>
                 <div class="guest-action"></div>
             </div>
@@ -147,7 +150,8 @@
             partyData.guests.push({
                 name: '',
                 expenses: 0,
-                plusOnes: 0
+                plusOnes: 0,
+                expenseExpression: null
             });
             renderGuestList();
             updateBudgetKeeperOptions();
@@ -179,9 +183,108 @@
             saveToStorage();
         }
         
+        // Safe expression evaluation function
+        function evaluateExpression(expression) {
+            // Only allow numbers and basic arithmetic operators
+            if (!/^[0-9\+\-\*\/\.\(\)\s]+$/.test(expression)) {
+                throw new Error('Invalid characters in expression');
+            }
+            
+            // Remove leading zeros from numbers to prevent octal interpretation
+            // This regex finds numbers and removes leading zeros, but preserves single zero
+            expression = expression.replace(/\b0+(\d+)/g, '$1');
+            
+            // Handle expressions with parentheses
+            // First, remove any leading zeros before parentheses
+            expression = expression.replace(/^0+(\()/g, '$1');
+            
+            try {
+                // Use a simple calculation approach instead of eval or Function
+                const result = new Function('return ' + expression)();
+                console.log('Calculated expression:', expression, '=', result);
+                return result;
+            } catch (e) {
+                console.error('Error in expression calculation:', expression, e);
+                throw e;
+            }
+        }
+        
         // Update guest expenses
         function updateGuestExpenses(index, expenses) {
-            partyData.guests[index].expenses = parseFloat(expenses) || 0;
+            // Check if the input contains arithmetic operators
+            if (/[\+\-\*\/]/.test(expenses)) {
+                try {
+                    // Store the original expression
+                    partyData.guests[index].expenseExpression = expenses;
+                    
+                    // Calculate the result safely
+                    const result = evaluateExpression(expenses);
+                    const numericResult = parseFloat(result);
+                    
+                    if (isNaN(numericResult)) {
+                        throw new Error('Result is not a number');
+                    }
+                    
+                    partyData.guests[index].expenses = numericResult;
+                    
+                    // Update the UI to show the result
+                    const guestRow = document.querySelectorAll('.guest-row')[index];
+                    if (guestRow) {
+                        const expenseContainer = guestRow.querySelector('.expense-container');
+                        if (expenseContainer) {
+                            const inputWrapper = expenseContainer.querySelector('.expense-input-wrapper');
+                            if (inputWrapper) {
+                                let resultDisplay = inputWrapper.querySelector('.expense-result');
+                                if (!resultDisplay) {
+                                    resultDisplay = document.createElement('span');
+                                    resultDisplay.className = 'expense-result';
+                                    inputWrapper.appendChild(resultDisplay);
+                                }
+                                resultDisplay.textContent = `= ${numericResult} ₽`;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error calculating expression:', e);
+                    // If calculation fails, just use the input as is
+                    partyData.guests[index].expenses = parseFloat(expenses) || 0;
+                    partyData.guests[index].expenseExpression = null;
+                    
+                    // Remove result display if it exists
+                    const guestRow = document.querySelectorAll('.guest-row')[index];
+                    if (guestRow) {
+                        const expenseContainer = guestRow.querySelector('.expense-container');
+                        if (expenseContainer) {
+                            const inputWrapper = expenseContainer.querySelector('.expense-input-wrapper');
+                            if (inputWrapper) {
+                                const resultDisplay = inputWrapper.querySelector('.expense-result');
+                                if (resultDisplay) {
+                                    inputWrapper.removeChild(resultDisplay);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Regular number input
+                partyData.guests[index].expenses = parseFloat(expenses) || 0;
+                partyData.guests[index].expenseExpression = null;
+                
+                // Remove result display if it exists
+                const guestRow = document.querySelectorAll('.guest-row')[index];
+                if (guestRow) {
+                    const expenseContainer = guestRow.querySelector('.expense-container');
+                    if (expenseContainer) {
+                        const inputWrapper = expenseContainer.querySelector('.expense-input-wrapper');
+                        if (inputWrapper) {
+                            const resultDisplay = inputWrapper.querySelector('.expense-result');
+                            if (resultDisplay) {
+                                inputWrapper.removeChild(resultDisplay);
+                            }
+                        }
+                    }
+                }
+            }
             saveToStorage();
         }
         
@@ -224,10 +327,40 @@
                 });
                 
                 const expenseInput = document.createElement('input');
-                expenseInput.type = 'number';
+                expenseInput.type = 'text'; // Changed from 'number' to allow expressions
                 expenseInput.className = 'guest-expense';
-                expenseInput.placeholder = 'Расходы (₽)';
-                expenseInput.value = guest.expenses;
+                expenseInput.placeholder = 'Число или формула';
+                
+                // Set value only if it's not 0 or empty
+                if (guest.expenseExpression) {
+                    expenseInput.value = guest.expenseExpression;
+                } else if (guest.expenses > 0) {
+                    expenseInput.value = guest.expenses;
+                } else {
+                    expenseInput.value = '';
+                }
+                
+                expenseInput.title = 'Можно вводить числа или формулы (например: 1000+500)';
+                
+                // Create a container for the expense input and result display
+                const expenseContainer = document.createElement('div');
+                expenseContainer.className = 'expense-container';
+                
+                // Create a wrapper for input and result to keep them on the same line
+                const inputWrapper = document.createElement('div');
+                inputWrapper.className = 'expense-input-wrapper';
+                inputWrapper.appendChild(expenseInput);
+                
+                // Add result display if there's an expression
+                if (guest.expenseExpression) {
+                    const resultDisplay = document.createElement('span');
+                    resultDisplay.className = 'expense-result';
+                    resultDisplay.textContent = `= ${guest.expenses} ₽`;
+                    inputWrapper.appendChild(resultDisplay);
+                }
+                
+                expenseContainer.appendChild(inputWrapper);
+                
                 expenseInput.addEventListener('input', (e) => {
                     updateGuestExpenses(index, e.target.value);
                 });
@@ -251,7 +384,7 @@
                 });
                 
                 guestRow.appendChild(nameInput);
-                guestRow.appendChild(expenseInput);
+                guestRow.appendChild(expenseContainer);
                 guestRow.appendChild(plusOnesInput);
                 guestRow.appendChild(removeBtn);
                 
