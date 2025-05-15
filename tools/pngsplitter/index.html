@@ -99,6 +99,20 @@
             <button id="manualSubdivideBtn" class="btn-add"><i class="fas fa-pencil-alt"></i> Ручное разделение</button>
           </div>
           
+          <div class="subdivision-params" id="autoSubdivideParams" style="display: none;">
+            <div class="param-group">
+              <label>Агрессивность стирания:</label>
+              <div class="param-slider-container">
+                <input type="range" id="aggressivenessSlider" min="1" max="5" value="2" class="param-slider">
+                <span id="aggressivenessValue" class="param-value">2</span>
+              </div>
+            </div>
+            <div class="subdivision-status" id="subdivisionStatus" style="display: none;">
+              <span>Итерация: <span id="iterationCounter">0</span></span>
+              <button id="continueErosionBtn" class="btn-add" style="display: none;"><i class="fas fa-forward"></i> Продолжить стирание</button>
+            </div>
+          </div>
+          
           <div class="subdivision-canvas-container">
             <canvas id="subdivisionCanvas" class="subdivision-canvas"></canvas>
           </div>
@@ -170,6 +184,14 @@
     const applySubdivisionBtn = document.getElementById('applySubdivisionBtn');
     const saveSubdivisionBtn = document.getElementById('saveSubdivisionBtn');
     const resetSubdivisionBtn = document.getElementById('resetSubdivisionBtn');
+    
+    // DOM элементы для автоматического разделения
+    const autoSubdivideParams = document.getElementById('autoSubdivideParams');
+    const aggressivenessSlider = document.getElementById('aggressivenessSlider');
+    const aggressivenessValue = document.getElementById('aggressivenessValue');
+    const subdivisionStatus = document.getElementById('subdivisionStatus');
+    const iterationCounter = document.getElementById('iterationCounter');
+    const continueErosionBtn = document.getElementById('continueErosionBtn');
     
     // Функция для проверки совпадения цвета с учетом допуска
     function colorMatch(data, idx, r, g, b, tolerance = currentTolerance) {
@@ -633,10 +655,22 @@
       // Скрываем кнопку сохранения
       saveSubdivisionBtn.style.display = 'none';
     }
-    
     // Автоматическое разделение объекта
-    function autoSubdivide() {
+    function autoSubdivide(continueErosion = false) {
       if (!originalObjectImage) return;
+      
+      // Показываем статус
+      subdivisionStatus.style.display = 'flex';
+      
+      // Получаем значение агрессивности
+      const aggressiveness = parseInt(aggressivenessSlider.value);
+      
+      // Если это продолжение стирания, используем существующие данные
+      // Иначе начинаем заново
+      if (!continueErosion) {
+        // Сбрасываем счетчик итераций
+        iterationCounter.textContent = '0';
+      }
       
       const width = originalObjectImage.width;
       const height = originalObjectImage.height;
@@ -655,7 +689,15 @@
       const [r0, g0, b0] = hexToRgb(colorPicker.value);
       
       // Создаем копию данных для работы
-      const tempData = new Uint8ClampedArray(data);
+      let tempData;
+      
+      // Если это продолжение стирания, используем существующие данные
+      if (continueErosion && window.lastTempData) {
+        tempData = new Uint8ClampedArray(window.lastTempData);
+      } else {
+        // Создаем новую копию данных
+        tempData = new Uint8ClampedArray(data.buffer.slice(0));
+      }
       
       // Функция для получения индекса пикселя
       function getIndex(x, y) {
@@ -663,19 +705,46 @@
       }
       
       // Функция для проверки, является ли пиксель граничным
-      function isBorderPixel(x, y) {
+      function isBorderPixel(x, y, dataArray) {
         // Проверяем, касается ли пиксель края изображения
         if (x === 0 || y === 0 || x === width - 1 || y === height - 1) {
           return true;
         }
         
         // Проверяем, касается ли пиксель фонового цвета
-        for (const [dx, dy] of [[1,0], [-1,0], [0,1], [0,-1]]) {
-          const nx = x + dx, ny = y + dy;
-          if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
-            const nidx = getIndex(nx, ny);
-            if (colorMatch(tempData, nidx, r0, g0, b0)) {
-              return true;
+        // Для первой итерации используем минимальную агрессивность
+        const checkRadius = iterations === 0 ? 1 : Math.max(1, Math.min(3, aggressiveness));
+        
+        // Для первой итерации проверяем только непосредственно соседние пиксели
+        if (iterations === 0) {
+          // Проверяем только 4 соседних пикселя (не по диагонали)
+          const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+          for (const [dx, dy] of directions) {
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
+              const nidx = getIndex(nx, ny);
+              if (colorMatch(dataArray, nidx, r0, g0, b0)) {
+                return true;
+              }
+            }
+          }
+        } else {
+          // Для последующих итераций используем настроенную агрессивность
+          for (let dy = -checkRadius; dy <= checkRadius; dy++) {
+            for (let dx = -checkRadius; dx <= checkRadius; dx++) {
+              // Пропускаем центральный пиксель
+              if (dx === 0 && dy === 0) continue;
+              
+              // Для агрессивности 1 проверяем только соседние пиксели (не по диагонали)
+              if (aggressiveness === 1 && Math.abs(dx) + Math.abs(dy) > 1) continue;
+              
+              const nx = x + dx, ny = y + dy;
+              if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
+                const nidx = getIndex(nx, ny);
+                if (colorMatch(dataArray, nidx, r0, g0, b0)) {
+                  return true;
+                }
+              }
             }
           }
         }
@@ -687,27 +756,49 @@
       function eraseBorderPixels() {
         let changed = false;
         
+        // Создаем копию данных, чтобы не изменять их во время проверки
+        const tempDataCopy = new Uint8ClampedArray(tempData);
+        
+        // Создаем массив пикселей для стирания, чтобы не менять данные во время итерации
+        const pixelsToErase = [];
+        
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             const idx = getIndex(x, y);
             
             // Пропускаем пиксели фона
-            if (colorMatch(tempData, idx, r0, g0, b0)) {
+            if (colorMatch(tempDataCopy, idx, r0, g0, b0)) {
               continue;
             }
             
-            // Если пиксель граничный, закрашиваем его в цвет фона
-            if (isBorderPixel(x, y)) {
-              tempData[idx] = r0;
-              tempData[idx + 1] = g0;
-              tempData[idx + 2] = b0;
-              tempData[idx + 3] = 255;
-              changed = true;
+            // Если пиксель граничный, добавляем его в список для стирания
+            if (isBorderPixel(x, y, tempDataCopy)) {
+              pixelsToErase.push([x, y, idx]);
             }
           }
         }
         
-        return changed;
+        // Ограничиваем количество стираемых пикселей для первой итерации
+        // чтобы не стереть всё изображение сразу
+        let pixelsToProcess = pixelsToErase;
+        if (iterations === 0 && pixelsToErase.length > 0) {
+          // Стираем только небольшой процент граничных пикселей на первой итерации
+          const maxPixelsFirstIteration = Math.max(10, Math.floor(pixelsToErase.length * 0.1));
+          pixelsToProcess = pixelsToErase.slice(0, maxPixelsFirstIteration);
+          console.log(`Первая итерация: ограничиваем стирание до ${maxPixelsFirstIteration} пикселей из ${pixelsToErase.length}`);
+        }
+        
+        // Теперь стираем отобранные пиксели
+        for (const [x, y, idx] of pixelsToProcess) {
+          tempData[idx] = r0;
+          tempData[idx + 1] = g0;
+          tempData[idx + 2] = b0;
+          tempData[idx + 3] = 255;
+          changed = true;
+        }
+        
+        console.log(`Стерто ${pixelsToProcess.length} пикселей`);
+        return changed && pixelsToProcess.length > 0;
       }
       
       // Функция для поиска компонент связности
@@ -852,33 +943,102 @@
       }
       
       // Выполняем автоматическое разделение
-      let iterations = 0;
+      let iterations = continueErosion ? parseInt(iterationCounter.textContent) : 0;
       let components;
       
-      // Повторяем стирание граничных пикселей, пока не получим несколько компонент
-      // или не достигнем максимального числа итераций
-      do {
-        eraseBorderPixels();
-        components = findConnectedComponents();
-        iterations++;
-      } while (components.length < 2 && iterations < 20);
-      
-      // Если нашли несколько компонент
-      if (components.length >= 2) {
-        // Создаем маски компонент
-        let masks = createComponentMasks(components);
+      // Функция для обновления визуализации
+      function updateVisualization() {
+        // Сохраняем текущие данные для возможного продолжения
+        window.lastTempData = new Uint8ClampedArray(tempData);
         
-        // Расширяем маски
-        masks = growMasks(masks);
+        // Создаем новый ImageData из текущих данных tempData
+        const tempImageData = new ImageData(new Uint8ClampedArray(tempData), width, height);
         
-        // Сохраняем маски
-        subdivisionMasks = masks;
+        // Отображаем на холсте
+        ctx.putImageData(tempImageData, 0, 0);
         
-        // Отображаем результат
-        displaySubdivisionResult();
-      } else {
-        alert('Не удалось автоматически разделить объект. Попробуйте ручное разделение.');
+        // Обновляем счетчик итераций
+        iterationCounter.textContent = iterations.toString();
+        
+        // Подсчитываем количество непрозрачных пикселей
+        let nonBackgroundPixels = 0;
+        for (let i = 0; i < tempData.length; i += 4) {
+          if (!colorMatch(tempData, i, r0, g0, b0)) {
+            nonBackgroundPixels++;
+          }
+        }
+        
+        // Выводим отладочную информацию
+        console.log('Итерация ' + iterations + ': компонент - ' + (components ? components.length : 0) +
+                    ', непрозрачных пикселей: ' + nonBackgroundPixels);
       }
+      
+      // Функция для выполнения одной итерации стирания
+      function performErosionIteration() {
+        // Стираем граничные пиксели
+        const changed = eraseBorderPixels();
+        
+        // Ищем компоненты связности
+        components = findConnectedComponents();
+        
+        // Обновляем визуализацию
+        updateVisualization();
+        
+        // Увеличиваем счетчик итераций
+        iterations++;
+        
+        // Если нашли несколько компонент, достигли максимального числа итераций или больше нет изменений, завершаем
+        if (components.length >= 2 || iterations >= 20 || !changed) {
+          console.log('Завершаем процесс стирания: компонент - ' + components.length +
+                      ', итераций - ' + iterations + ', изменения - ' + changed);
+          finishErosion();
+        } else {
+          // Иначе планируем следующую итерацию через небольшую задержку
+          setTimeout(performErosionIteration, 200); // Увеличиваем задержку для лучшей визуализации
+        }
+      }
+      
+      // Функция для завершения процесса стирания
+      function finishErosion() {
+        // Если нашли несколько компонент
+        if (components.length >= 2) {
+          // Создаем маски компонент
+          let masks = createComponentMasks(components);
+          
+          // Расширяем маски
+          masks = growMasks(masks);
+          
+          // Сохраняем маски
+          subdivisionMasks = masks;
+          
+          // Отображаем результат
+          displaySubdivisionResult();
+          
+          // Скрываем кнопку продолжения стирания
+          continueErosionBtn.style.display = 'none';
+          
+          // Показываем кнопку сохранения разделения
+          saveSubdivisionBtn.style.display = 'inline-block';
+          
+          // Скрываем кнопки, которые не нужны в автоматическом режиме
+          applySubdivisionBtn.style.display = 'none';
+          resetSubdivisionBtn.style.display = 'none';
+        } else {
+          // Показываем кнопку продолжения стирания
+          continueErosionBtn.style.display = 'inline-block';
+          
+          // Скрываем кнопку сохранения
+          saveSubdivisionBtn.style.display = 'none';
+          
+          // Не показываем сообщение, так как кнопка "продолжить стирание" теперь делает 5 итераций
+          console.log('Не удалось автоматически разделить объект за ' + iterations + ' итераций. Можно продолжить стирание или попробовать ручное разделение.');
+        }
+      }
+      
+      // Запускаем первую итерацию
+      performErosionIteration();
+      // Все остальные действия будут выполнены в функции finishErosion(),
+      // которая вызывается из performErosionIteration() после завершения всех итераций
     }
     
     // Включение режима ручного разделения
@@ -1328,12 +1488,64 @@
     document.getElementById('closeSubdivisionBtn').addEventListener('click', closeSubdivisionModal);
     
     autoSubdivideBtn.addEventListener('click', () => {
+      // Показываем параметры автоматического разделения
+      autoSubdivideParams.style.display = 'block';
+      brushSizeContainer.style.display = 'none';
+      isDrawingMode = false;
+      
+      // Сбрасываем статус
+      subdivisionStatus.style.display = 'none';
+      iterationCounter.textContent = '0';
+      continueErosionBtn.style.display = 'none';
+      
+      // Скрываем кнопки, которые не нужны в автоматическом режиме
+      applySubdivisionBtn.style.display = 'none';
+      resetSubdivisionBtn.style.display = 'none';
+      
+      // Запускаем автоматическое разделение
       autoSubdivide();
     });
     
     manualSubdivideBtn.addEventListener('click', () => {
+      // Скрываем параметры автоматического разделения
+      autoSubdivideParams.style.display = 'none';
+      
+      // Показываем кнопки для ручного режима
+      applySubdivisionBtn.style.display = 'inline-block';
+      resetSubdivisionBtn.style.display = 'inline-block';
+      
+      // Скрываем кнопку сохранения до применения разделения
+      saveSubdivisionBtn.style.display = 'none';
+      
+      // Включаем режим ручного разделения
       enableManualSubdivide();
     });
+    
+    // Обработчик для ползунка агрессивности
+    aggressivenessSlider.addEventListener('input', (e) => {
+      aggressivenessValue.textContent = e.target.value;
+    });
+    
+    // Обработчик для кнопки продолжения стирания
+    continueErosionBtn.addEventListener('click', () => {
+      // Запускаем 5 итераций стирания
+      continueBatchErosion(5);
+    });
+    
+    // Функция для выполнения нескольких итераций стирания
+    function continueBatchErosion(batchSize) {
+      let currentBatch = 0;
+      
+      function runNextIteration() {
+        if (currentBatch < batchSize) {
+          autoSubdivide(true); // true означает продолжение стирания
+          currentBatch++;
+          setTimeout(runNextIteration, 300); // Небольшая задержка между итерациями
+        }
+      }
+      
+      runNextIteration();
+    }
     
     applySubdivisionBtn.addEventListener('click', () => {
       if (isDrawingMode) {
