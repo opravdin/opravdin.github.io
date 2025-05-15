@@ -84,6 +84,39 @@
   
   <canvas id="mainCanvas"></canvas>
   <canvas id="tempCanvas"></canvas>
+  
+  <!-- Модальное окно для дополнительного разделения объектов -->
+  <div class="modal-overlay" id="subdivisionModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title">Дополнительное разделение объекта</h3>
+        <button class="modal-close" id="closeSubdivisionBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="subdivision-container">
+          <div class="subdivision-options">
+            <button id="autoSubdivideBtn" class="btn-add"><i class="fas fa-magic"></i> Автоматическое разделение</button>
+            <button id="manualSubdivideBtn" class="btn-add"><i class="fas fa-pencil-alt"></i> Ручное разделение</button>
+          </div>
+          
+          <div class="subdivision-canvas-container">
+            <canvas id="subdivisionCanvas" class="subdivision-canvas"></canvas>
+          </div>
+          
+          <div class="brush-size-container" id="brushSizeContainer" style="display: none;">
+            <label>Размер кисти:</label>
+            <input type="range" id="brushSizeSlider" min="1" max="20" value="5" class="brush-size-slider">
+            <span id="brushSizeValue" class="brush-size-value">5</span>
+          </div>
+          
+          <div class="subdivision-tools">
+            <button id="applySubdivisionBtn" class="btn-add"><i class="fas fa-check"></i> Применить разделение</button>
+            <button id="resetSubdivisionBtn" class="btn-warning"><i class="fas fa-undo"></i> Сбросить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -95,6 +128,13 @@
     let sourceImages = [];
     let outputObjects = [];
     let lastImageIndex = -1;
+    
+    // Переменные для дополнительного разделения
+    let currentSubdivisionIndex = -1;
+    let isDrawingMode = false;
+    let currentBrushSize = 5;
+    let originalObjectImage = null;
+    let subdivisionMasks = [];
     
     // DOM элементы
     const fileInput = document.getElementById('fileInput');
@@ -116,6 +156,18 @@
     const clearAllBtn = document.getElementById('clearAllBtn');
     const mainCanvas = document.getElementById('mainCanvas');
     const tempCanvas = document.getElementById('tempCanvas');
+    
+    // DOM элементы для дополнительного разделения
+    const subdivisionModal = document.getElementById('subdivisionModal');
+    const closeSubdivisionBtn = document.getElementById('closeSubdivisionBtn');
+    const autoSubdivideBtn = document.getElementById('autoSubdivideBtn');
+    const manualSubdivideBtn = document.getElementById('manualSubdivideBtn');
+    const subdivisionCanvas = document.getElementById('subdivisionCanvas');
+    const brushSizeContainer = document.getElementById('brushSizeContainer');
+    const brushSizeSlider = document.getElementById('brushSizeSlider');
+    const brushSizeValue = document.getElementById('brushSizeValue');
+    const applySubdivisionBtn = document.getElementById('applySubdivisionBtn');
+    const resetSubdivisionBtn = document.getElementById('resetSubdivisionBtn');
     
     // Функция для проверки совпадения цвета с учетом допуска
     function colorMatch(data, idx, r, g, b, tolerance = currentTolerance) {
@@ -376,7 +428,17 @@
           downloadObject(index);
         });
         
+        const splitBtn = document.createElement('button');
+        splitBtn.innerHTML = '<i class="fas fa-cut"></i>';
+        splitBtn.title = 'Разделить дальше';
+        splitBtn.className = 'split-btn';
+        splitBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openSubdivisionModal(index);
+        });
+        
         actions.appendChild(downloadBtn);
+        actions.appendChild(splitBtn);
         
         div.appendChild(img);
         div.appendChild(overlay);
@@ -530,6 +592,613 @@
       updateOutputDisplay();
     }
     
+    // Функции для дополнительного разделения объектов
+    
+    // Открытие модального окна для дополнительного разделения
+    function openSubdivisionModal(index) {
+      currentSubdivisionIndex = index;
+      const obj = outputObjects[index];
+      
+      // Загружаем изображение объекта
+      const img = new Image();
+      img.src = obj.dataUrl;
+      img.onload = function() {
+        // Сохраняем оригинальное изображение
+        originalObjectImage = img;
+        
+        // Настраиваем canvas
+        subdivisionCanvas.width = img.width;
+        subdivisionCanvas.height = img.height;
+        const ctx = subdivisionCanvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        
+        // Сбрасываем режим рисования
+        isDrawingMode = false;
+        brushSizeContainer.style.display = 'none';
+        
+        // Показываем модальное окно
+        subdivisionModal.classList.add('active');
+      };
+    }
+    
+    // Закрытие модального окна
+    function closeSubdivisionModal() {
+      subdivisionModal.classList.remove('active');
+      currentSubdivisionIndex = -1;
+      originalObjectImage = null;
+      subdivisionMasks = [];
+    }
+    
+    // Автоматическое разделение объекта
+    function autoSubdivide() {
+      if (!originalObjectImage) return;
+      
+      const width = originalObjectImage.width;
+      const height = originalObjectImage.height;
+      
+      // Настраиваем canvas
+      subdivisionCanvas.width = width;
+      subdivisionCanvas.height = height;
+      const ctx = subdivisionCanvas.getContext('2d');
+      ctx.drawImage(originalObjectImage, 0, 0);
+      
+      // Получаем данные изображения
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+      
+      // Получаем цвет разделителя
+      const [r0, g0, b0] = hexToRgb(colorPicker.value);
+      
+      // Создаем копию данных для работы
+      const tempData = new Uint8ClampedArray(data);
+      
+      // Функция для получения индекса пикселя
+      function getIndex(x, y) {
+        return (y * width + x) * 4;
+      }
+      
+      // Функция для проверки, является ли пиксель граничным
+      function isBorderPixel(x, y) {
+        // Проверяем, касается ли пиксель края изображения
+        if (x === 0 || y === 0 || x === width - 1 || y === height - 1) {
+          return true;
+        }
+        
+        // Проверяем, касается ли пиксель фонового цвета
+        for (const [dx, dy] of [[1,0], [-1,0], [0,1], [0,-1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
+            const nidx = getIndex(nx, ny);
+            if (colorMatch(tempData, nidx, r0, g0, b0)) {
+              return true;
+            }
+          }
+        }
+        
+        return false;
+      }
+      
+      // Функция для закрашивания граничных пикселей
+      function eraseBorderPixels() {
+        let changed = false;
+        
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const idx = getIndex(x, y);
+            
+            // Пропускаем пиксели фона
+            if (colorMatch(tempData, idx, r0, g0, b0)) {
+              continue;
+            }
+            
+            // Если пиксель граничный, закрашиваем его в цвет фона
+            if (isBorderPixel(x, y)) {
+              tempData[idx] = r0;
+              tempData[idx + 1] = g0;
+              tempData[idx + 2] = b0;
+              tempData[idx + 3] = 255;
+              changed = true;
+            }
+          }
+        }
+        
+        return changed;
+      }
+      
+      // Функция для поиска компонент связности
+      function findConnectedComponents() {
+        const visited = new Uint8Array(width * height);
+        const components = [];
+        
+        // Функция для получения индекса в массиве visited
+        function getVisitedIndex(x, y) {
+          return y * width + x;
+        }
+        
+        // Функция заливки для выделения компоненты
+        function floodFill(x, y) {
+          const queue = [[x, y]];
+          const pixels = [];
+          
+          while (queue.length) {
+            const [cx, cy] = queue.pop();
+            const vidx = getVisitedIndex(cx, cy);
+            if (visited[vidx]) continue;
+            
+            const idx = getIndex(cx, cy);
+            if (colorMatch(tempData, idx, r0, g0, b0)) continue;
+            
+            visited[vidx] = 1;
+            pixels.push([cx, cy]);
+            
+            // Проверяем соседние пиксели
+            for (const [dx, dy] of [[1,0], [-1,0], [0,1], [0,-1]]) {
+              const nx = cx + dx, ny = cy + dy;
+              if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
+                const nvidx = getVisitedIndex(nx, ny);
+                const nidx = getIndex(nx, ny);
+                if (!visited[nvidx] && !colorMatch(tempData, nidx, r0, g0, b0)) {
+                  queue.push([nx, ny]);
+                }
+              }
+            }
+          }
+          
+          return pixels;
+        }
+        
+        // Находим все компоненты
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const vidx = getVisitedIndex(x, y);
+            const idx = getIndex(x, y);
+            if (!visited[vidx] && !colorMatch(tempData, idx, r0, g0, b0)) {
+              const component = floodFill(x, y);
+              if (component.length > 20) {  // Игнорируем слишком маленькие компоненты
+                components.push(component);
+              }
+            }
+          }
+        }
+        
+        return components;
+      }
+      
+      // Функция для создания масок компонент
+      function createComponentMasks(components) {
+        const masks = [];
+        
+        for (const component of components) {
+          const mask = new Uint8Array(width * height);
+          
+          // Заполняем маску
+          for (const [x, y] of component) {
+            const idx = y * width + x;
+            mask[idx] = 1;
+          }
+          
+          masks.push(mask);
+        }
+        
+        return masks;
+      }
+      
+      // Функция для расширения масок
+      function growMasks(masks) {
+        const tempMasks = masks.map(mask => new Uint8Array(mask));
+        let changed = true;
+        
+        while (changed) {
+          changed = false;
+          
+          for (let m = 0; m < masks.length; m++) {
+            const mask = masks[m];
+            
+            for (let y = 0; y < height; y++) {
+              for (let x = 0; x < width; x++) {
+                const idx = y * width + x;
+                
+                // Пропускаем уже замаскированные пиксели
+                if (mask[idx]) continue;
+                
+                // Пропускаем пиксели фона
+                const dataIdx = getIndex(x, y);
+                if (colorMatch(data, dataIdx, r0, g0, b0)) continue;
+                
+                // Проверяем, есть ли соседние пиксели в этой маске
+                let hasNeighbor = false;
+                for (const [dx, dy] of [[1,0], [-1,0], [0,1], [0,-1]]) {
+                  const nx = x + dx, ny = y + dy;
+                  if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
+                    const nidx = ny * width + nx;
+                    if (mask[nidx]) {
+                      hasNeighbor = true;
+                      break;
+                    }
+                  }
+                }
+                
+                // Если есть сосед в этой маске и пиксель не замаскирован другими масками
+                if (hasNeighbor) {
+                  let isFree = true;
+                  for (let om = 0; om < masks.length; om++) {
+                    if (om !== m && masks[om][idx]) {
+                      isFree = false;
+                      break;
+                    }
+                  }
+                  
+                  if (isFree) {
+                    tempMasks[m][idx] = 1;
+                    changed = true;
+                  }
+                }
+              }
+            }
+          }
+          
+          // Копируем временные маски обратно
+          for (let m = 0; m < masks.length; m++) {
+            masks[m] = new Uint8Array(tempMasks[m]);
+          }
+        }
+        
+        return masks;
+      }
+      
+      // Выполняем автоматическое разделение
+      let iterations = 0;
+      let components;
+      
+      // Повторяем стирание граничных пикселей, пока не получим несколько компонент
+      // или не достигнем максимального числа итераций
+      do {
+        eraseBorderPixels();
+        components = findConnectedComponents();
+        iterations++;
+      } while (components.length < 2 && iterations < 20);
+      
+      // Если нашли несколько компонент
+      if (components.length >= 2) {
+        // Создаем маски компонент
+        let masks = createComponentMasks(components);
+        
+        // Расширяем маски
+        masks = growMasks(masks);
+        
+        // Сохраняем маски
+        subdivisionMasks = masks;
+        
+        // Отображаем результат
+        displaySubdivisionResult();
+      } else {
+        alert('Не удалось автоматически разделить объект. Попробуйте ручное разделение.');
+      }
+    }
+    
+    // Включение режима ручного разделения
+    function enableManualSubdivide() {
+      if (!originalObjectImage) return;
+      
+      isDrawingMode = true;
+      brushSizeContainer.style.display = 'flex';
+      
+      // Настраиваем canvas
+      const width = originalObjectImage.width;
+      const height = originalObjectImage.height;
+      subdivisionCanvas.width = width;
+      subdivisionCanvas.height = height;
+      const ctx = subdivisionCanvas.getContext('2d');
+      ctx.drawImage(originalObjectImage, 0, 0);
+      
+      // Получаем цвет разделителя
+      const [r0, g0, b0] = hexToRgb(colorPicker.value);
+      
+      // Переменные для рисования
+      let isDrawing = false;
+      let lastX = 0;
+      let lastY = 0;
+      
+      // Функция для рисования линии
+      function drawLine(x1, y1, x2, y2) {
+        const ctx = subdivisionCanvas.getContext('2d');
+        ctx.beginPath();
+        ctx.strokeStyle = colorPicker.value;
+        ctx.lineWidth = currentBrushSize;
+        ctx.lineCap = 'round';
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      
+      // Обработчики событий для рисования
+      subdivisionCanvas.addEventListener('mousedown', function(e) {
+        if (!isDrawingMode) return;
+        
+        isDrawing = true;
+        const rect = subdivisionCanvas.getBoundingClientRect();
+        lastX = (e.clientX - rect.left) / (rect.width / width);
+        lastY = (e.clientY - rect.top) / (rect.height / height);
+      });
+      
+      subdivisionCanvas.addEventListener('mousemove', function(e) {
+        if (!isDrawingMode || !isDrawing) return;
+        
+        const rect = subdivisionCanvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / (rect.width / width);
+        const y = (e.clientY - rect.top) / (rect.height / height);
+        
+        drawLine(lastX, lastY, x, y);
+        
+        lastX = x;
+        lastY = y;
+      });
+      
+      subdivisionCanvas.addEventListener('mouseup', function() {
+        isDrawing = false;
+      });
+      
+      subdivisionCanvas.addEventListener('mouseleave', function() {
+        isDrawing = false;
+      });
+    }
+    
+    // Применение ручного разделения
+    function applyManualSubdivide() {
+      if (!originalObjectImage || !isDrawingMode) return;
+      
+      const width = originalObjectImage.width;
+      const height = originalObjectImage.height;
+      
+      // Получаем данные с canvas
+      const ctx = subdivisionCanvas.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+      
+      // Получаем цвет разделителя
+      const [r0, g0, b0] = hexToRgb(colorPicker.value);
+      
+      // Функция для получения индекса пикселя
+      function getIndex(x, y) {
+        return (y * width + x) * 4;
+      }
+      
+      // Функция для поиска компонент связности
+      function findConnectedComponents() {
+        const visited = new Uint8Array(width * height);
+        const components = [];
+        
+        // Функция для получения индекса в массиве visited
+        function getVisitedIndex(x, y) {
+          return y * width + x;
+        }
+        
+        // Функция заливки для выделения компоненты
+        function floodFill(x, y) {
+          const queue = [[x, y]];
+          const pixels = [];
+          
+          while (queue.length) {
+            const [cx, cy] = queue.pop();
+            const vidx = getVisitedIndex(cx, cy);
+            if (visited[vidx]) continue;
+            
+            const idx = getIndex(cx, cy);
+            if (colorMatch(data, idx, r0, g0, b0)) continue;
+            
+            visited[vidx] = 1;
+            pixels.push([cx, cy]);
+            
+            // Проверяем соседние пиксели
+            for (const [dx, dy] of [[1,0], [-1,0], [0,1], [0,-1]]) {
+              const nx = cx + dx, ny = cy + dy;
+              if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
+                const nvidx = getVisitedIndex(nx, ny);
+                const nidx = getIndex(nx, ny);
+                if (!visited[nvidx] && !colorMatch(data, nidx, r0, g0, b0)) {
+                  queue.push([nx, ny]);
+                }
+              }
+            }
+          }
+          
+          return pixels;
+        }
+        
+        // Находим все компоненты
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const vidx = getVisitedIndex(x, y);
+            const idx = getIndex(x, y);
+            if (!visited[vidx] && !colorMatch(data, idx, r0, g0, b0)) {
+              const component = floodFill(x, y);
+              if (component.length > 20) {  // Игнорируем слишком маленькие компоненты
+                components.push(component);
+              }
+            }
+          }
+        }
+        
+        return components;
+      }
+      
+      // Функция для создания масок компонент
+      function createComponentMasks(components) {
+        const masks = [];
+        
+        for (const component of components) {
+          const mask = new Uint8Array(width * height);
+          
+          // Заполняем маску
+          for (const [x, y] of component) {
+            const idx = y * width + x;
+            mask[idx] = 1;
+          }
+          
+          masks.push(mask);
+        }
+        
+        return masks;
+      }
+      
+      // Находим компоненты
+      const components = findConnectedComponents();
+      
+      // Если нашли несколько компонент
+      if (components.length >= 2) {
+        // Создаем маски компонент
+        subdivisionMasks = createComponentMasks(components);
+        
+        // Отображаем результат
+        displaySubdivisionResult();
+      } else {
+        alert('Не удалось разделить объект. Попробуйте нарисовать более четкую линию разделения.');
+      }
+    }
+    
+    // Отображение результата разделения
+    function displaySubdivisionResult() {
+      if (!originalObjectImage || subdivisionMasks.length < 2) return;
+      
+      const width = originalObjectImage.width;
+      const height = originalObjectImage.height;
+      
+      // Настраиваем canvas
+      subdivisionCanvas.width = width;
+      subdivisionCanvas.height = height;
+      const ctx = subdivisionCanvas.getContext('2d');
+      
+      // Рисуем оригинальное изображение
+      ctx.drawImage(originalObjectImage, 0, 0);
+      
+      // Получаем данные изображения
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+      
+      // Создаем временный canvas для каждой маски
+      const tempCanvases = subdivisionMasks.map((mask, index) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const tempCtx = canvas.getContext('2d');
+        
+        // Создаем новые данные изображения
+        const newImageData = new ImageData(width, height);
+        const newData = newImageData.data;
+        
+        // Копируем пиксели из оригинального изображения согласно маске
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const idx = (y * width + x) * 4;
+            const maskIdx = y * width + x;
+            
+            if (mask[maskIdx]) {
+              newData[idx] = data[idx];
+              newData[idx + 1] = data[idx + 1];
+              newData[idx + 2] = data[idx + 2];
+              newData[idx + 3] = data[idx + 3];
+            } else {
+              newData[idx + 3] = 0;  // Прозрачный пиксель
+            }
+          }
+        }
+        
+        // Рисуем на временном canvas
+        tempCtx.putImageData(newImageData, 0, 0);
+        
+        return canvas;
+      });
+      
+      // Очищаем canvas
+      ctx.clearRect(0, 0, width, height);
+      
+      // Рисуем каждую компоненту с разным оттенком для визуализации
+      const colors = ['rgba(255,0,0,0.3)', 'rgba(0,255,0,0.3)', 'rgba(0,0,255,0.3)', 'rgba(255,255,0,0.3)'];
+      
+      // Сначала рисуем оригинальное изображение
+      ctx.drawImage(originalObjectImage, 0, 0);
+      
+      // Затем рисуем полупрозрачные цветные области для каждой маски
+      subdivisionMasks.forEach((mask, index) => {
+        const color = colors[index % colors.length];
+        ctx.fillStyle = color;
+        
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const maskIdx = y * width + x;
+            
+            if (mask[maskIdx]) {
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+        }
+      });
+      
+      // Сохраняем временные canvas для использования при применении разделения
+      subdivisionMasks.tempCanvases = tempCanvases;
+    }
+    
+    // Применение разделения
+    function applySubdivision() {
+      if (!originalObjectImage || subdivisionMasks.length < 2 || currentSubdivisionIndex === -1) return;
+      
+      // Получаем текущий объект
+      const obj = outputObjects[currentSubdivisionIndex];
+      
+      // Удаляем текущий объект из списка
+      outputObjects.splice(currentSubdivisionIndex, 1);
+      
+      // Добавляем новые объекты
+      const newObjects = subdivisionMasks.tempCanvases.map((canvas, index) => {
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        return {
+          sourceIndex: obj.sourceIndex,
+          objectIndex: obj.objectIndex + '_sub' + index,
+          width: canvas.width,
+          height: canvas.height,
+          dataUrl: dataUrl,
+          fileName: `object_${obj.sourceIndex}_${obj.objectIndex}_sub${index}.png`
+        };
+      });
+      
+      // Добавляем новые объекты в общий список
+      outputObjects = [...outputObjects, ...newObjects];
+      
+      // Обновляем счетчик объектов
+      if (sourceImages[obj.sourceIndex]) {
+        sourceImages[obj.sourceIndex].objectCount += newObjects.length - 1;
+      }
+      
+      // Обновляем UI
+      updateOutputDisplay();
+      updateSourceImagesList();
+      
+      // Закрываем модальное окно
+      closeSubdivisionModal();
+    }
+    
+    // Сброс разделения
+    function resetSubdivision() {
+      if (!originalObjectImage) return;
+      
+      // Сбрасываем маски
+      subdivisionMasks = [];
+      
+      // Настраиваем canvas
+      subdivisionCanvas.width = originalObjectImage.width;
+      subdivisionCanvas.height = originalObjectImage.height;
+      const ctx = subdivisionCanvas.getContext('2d');
+      ctx.drawImage(originalObjectImage, 0, 0);
+      
+      // Если в режиме рисования, оставляем его активным
+      if (isDrawingMode) {
+        brushSizeContainer.style.display = 'flex';
+      } else {
+        brushSizeContainer.style.display = 'none';
+      }
+    }
+    
     // Обработчики событий
     
     // Загрузка файлов через input
@@ -603,6 +1272,36 @@
     downloadZipBtn.addEventListener('click', downloadZip);
     clearLastBtn.addEventListener('click', clearLastResults);
     clearAllBtn.addEventListener('click', clearAllResults);
+    
+    // Обработчики событий для дополнительного разделения
+    document.getElementById('closeSubdivisionBtn').addEventListener('click', closeSubdivisionModal);
+    
+    autoSubdivideBtn.addEventListener('click', () => {
+      autoSubdivide();
+    });
+    
+    manualSubdivideBtn.addEventListener('click', () => {
+      enableManualSubdivide();
+    });
+    
+    applySubdivisionBtn.addEventListener('click', () => {
+      if (isDrawingMode) {
+        applyManualSubdivide();
+        // Если успешно разделили объект (есть маски), применяем разделение
+        if (subdivisionMasks.length >= 2) {
+          applySubdivision();
+        }
+      } else {
+        applySubdivision();
+      }
+    });
+    
+    resetSubdivisionBtn.addEventListener('click', resetSubdivision);
+    
+    brushSizeSlider.addEventListener('input', (e) => {
+      currentBrushSize = parseInt(e.target.value);
+      brushSizeValue.textContent = currentBrushSize;
+    });
   </script>
 </body>
 </html>

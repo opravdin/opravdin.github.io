@@ -341,3 +341,159 @@ canvas {
         flex: 1;
     }
 }
+
+/* Modal styles for subdivision */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    margin: 0;
+    width: auto;
+}
+
+.modal-close:hover {
+    color: var(--primary-color);
+}
+
+.modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Subdivision specific styles */
+.subdivision-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.subdivision-options {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.subdivision-canvas-container {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0 auto;
+    max-width: 100%;
+    max-height: 60vh;
+}
+
+.subdivision-canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 60vh;
+    margin: 0 auto;
+}
+
+.subdivision-tools {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    justify-content: center;
+}
+
+.subdivision-tools button {
+    padding: 8px 15px;
+}
+
+.brush-size-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.brush-size-slider {
+    flex: 1;
+}
+
+.brush-size-value {
+    font-weight: 500;
+    color: var(--primary-color);
+    min-width: 30px;
+    text-align: center;
+}
+
+/* Add a split button to output items */
+.split-btn {
+    background-color: rgba(255, 255, 255, 0.9);
+    color: var(--primary-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.split-btn:hover {
+    background-color: white;
+    transform: translateY(-2px);
+}
