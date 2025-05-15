@@ -48,6 +48,38 @@
           <span id="toleranceValue" class="tolerance-value">10</span>
         </div>
       </div>
+      
+      <div class="control-group" id="edgeProcessingSettings">
+        <label class="control-label">Улучшение краев при скачивании</label>
+        <div class="control-row">
+          <label>
+            <input type="checkbox" id="enableEdgeProcessingCheckbox" checked>
+            Включить обработку краев
+          </label>
+        </div>
+        <div class="edge-processing-options" id="edgeProcessingOptions">
+          <div class="control-row">
+            <label>Радиус размытия:</label>
+            <div class="param-slider-container">
+              <input type="range" id="blurRadiusSlider" min="1" max="5" value="1" class="param-slider">
+              <span id="blurRadiusValue" class="param-value">1</span>
+            </div>
+          </div>
+          <div class="control-row">
+            <label>Порог прозрачности:</label>
+            <div class="param-slider-container">
+              <input type="range" id="thresholdSlider" min="0" max="255" value="128" class="param-slider">
+              <span id="thresholdValue" class="param-value">128</span>
+            </div>
+          </div>
+          <div class="control-row">
+            <label>
+              <input type="checkbox" id="edgeOnlyCheckbox" checked>
+              Обрабатывать только края
+            </label>
+          </div>
+        </div>
+      </div>
     </div>
     
     <div class="preview-container" id="previewContainer">
@@ -135,6 +167,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="edge-processor.js"></script>
   
   <script>
     // Глобальные переменные
@@ -143,6 +176,14 @@
     let sourceImages = [];
     let outputObjects = [];
     let lastImageIndex = -1;
+    
+    // Настройки обработки краев
+    let edgeProcessingSettings = {
+      enabled: true,
+      blurRadius: 1,
+      threshold: 128,
+      edgeOnly: true
+    };
     
     // Переменные для дополнительного разделения
     let currentSubdivisionIndex = -1;
@@ -160,6 +201,15 @@
     const toleranceValue = document.getElementById('toleranceValue');
     const previewContainer = document.getElementById('previewContainer');
     const previewImage = document.getElementById('previewImage');
+    
+    // DOM элементы для настроек обработки краев
+    const enableEdgeProcessingCheckbox = document.getElementById('enableEdgeProcessingCheckbox');
+    const edgeProcessingOptions = document.getElementById('edgeProcessingOptions');
+    const blurRadiusSlider = document.getElementById('blurRadiusSlider');
+    const blurRadiusValue = document.getElementById('blurRadiusValue');
+    const thresholdSlider = document.getElementById('thresholdSlider');
+    const thresholdValue = document.getElementById('thresholdValue');
+    const edgeOnlyCheckbox = document.getElementById('edgeOnlyCheckbox');
     const sourceImagesContainer = document.getElementById('sourceImagesContainer');
     const sourceImagesList = document.getElementById('sourceImagesList');
     const output = document.getElementById('output');
@@ -522,30 +572,153 @@
     // Функция для скачивания одного объекта
     function downloadObject(index) {
       const obj = outputObjects[index];
-      const link = document.createElement('a');
-      link.href = obj.dataUrl;
-      link.download = obj.fileName;
-      link.click();
+      
+      // Если обработка краев отключена, скачиваем оригинальное изображение
+      if (!edgeProcessingSettings.enabled) {
+        const link = document.createElement('a');
+        link.href = obj.dataUrl;
+        link.download = obj.fileName;
+        link.click();
+        return;
+      }
+      
+      // Создаем временный canvas для обработки
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = function() {
+        tempCanvas.width = img.width;
+        tempCanvas.height = img.height;
+        tempCtx.drawImage(img, 0, 0);
+        
+        // Получаем данные изображения
+        const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+        
+        // Обрабатываем края
+        const processedData = EdgeProcessor.processEdges(imageData, {
+          blurRadius: edgeProcessingSettings.blurRadius,
+          threshold: edgeProcessingSettings.threshold,
+          edgeOnly: edgeProcessingSettings.edgeOnly
+        });
+        
+        // Возвращаем обработанные данные на canvas
+        tempCtx.putImageData(processedData, 0, 0);
+        
+        // Создаем новый dataUrl
+        const processedDataUrl = tempCanvas.toDataURL('image/png');
+        
+        // Скачиваем обработанное изображение
+        const link = document.createElement('a');
+        link.href = processedDataUrl;
+        link.download = obj.fileName;
+        link.click();
+      };
+      
+      img.src = obj.dataUrl;
     }
     
     // Функция для скачивания всех объектов одного изображения
     function downloadSourceObjects(sourceIndex) {
       const objects = outputObjects.filter(obj => obj.sourceIndex === sourceIndex);
-      objects.forEach(obj => {
-        const link = document.createElement('a');
-        link.href = obj.dataUrl;
-        link.download = obj.fileName;
-        setTimeout(() => link.click(), 100 * obj.objectIndex);
+      
+      // Если обработка краев отключена, скачиваем оригинальные изображения
+      if (!edgeProcessingSettings.enabled) {
+        objects.forEach(obj => {
+          const link = document.createElement('a');
+          link.href = obj.dataUrl;
+          link.download = obj.fileName;
+          setTimeout(() => link.click(), 100 * obj.objectIndex);
+        });
+        return;
+      }
+      
+      // Обрабатываем и скачиваем каждое изображение
+      objects.forEach((obj, idx) => {
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = function() {
+          tempCanvas.width = img.width;
+          tempCanvas.height = img.height;
+          tempCtx.drawImage(img, 0, 0);
+          
+          // Получаем данные изображения
+          const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+          
+          // Обрабатываем края
+          const processedData = EdgeProcessor.processEdges(imageData, {
+            blurRadius: edgeProcessingSettings.blurRadius,
+            threshold: edgeProcessingSettings.threshold,
+            edgeOnly: edgeProcessingSettings.edgeOnly
+          });
+          
+          // Возвращаем обработанные данные на canvas
+          tempCtx.putImageData(processedData, 0, 0);
+          
+          // Создаем новый dataUrl
+          const processedDataUrl = tempCanvas.toDataURL('image/png');
+          
+          // Скачиваем обработанное изображение
+          const link = document.createElement('a');
+          link.href = processedDataUrl;
+          link.download = obj.fileName;
+          setTimeout(() => link.click(), 100 * idx);
+        };
+        
+        img.src = obj.dataUrl;
       });
     }
     
     // Функция для скачивания всех объектов
     function downloadAllObjects() {
-      outputObjects.forEach((obj, index) => {
-        const link = document.createElement('a');
-        link.href = obj.dataUrl;
-        link.download = obj.fileName;
-        setTimeout(() => link.click(), 100 * index);
+      // Если обработка краев отключена, скачиваем оригинальные изображения
+      if (!edgeProcessingSettings.enabled) {
+        outputObjects.forEach((obj, index) => {
+          const link = document.createElement('a');
+          link.href = obj.dataUrl;
+          link.download = obj.fileName;
+          setTimeout(() => link.click(), 100 * index);
+        });
+        return;
+      }
+      
+      // Обрабатываем и скачиваем каждое изображение
+      outputObjects.forEach((obj, idx) => {
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = function() {
+          tempCanvas.width = img.width;
+          tempCanvas.height = img.height;
+          tempCtx.drawImage(img, 0, 0);
+          
+          // Получаем данные изображения
+          const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+          
+          // Обрабатываем края
+          const processedData = EdgeProcessor.processEdges(imageData, {
+            blurRadius: edgeProcessingSettings.blurRadius,
+            threshold: edgeProcessingSettings.threshold,
+            edgeOnly: edgeProcessingSettings.edgeOnly
+          });
+          
+          // Возвращаем обработанные данные на canvas
+          tempCtx.putImageData(processedData, 0, 0);
+          
+          // Создаем новый dataUrl
+          const processedDataUrl = tempCanvas.toDataURL('image/png');
+          
+          // Скачиваем обработанное изображение
+          const link = document.createElement('a');
+          link.href = processedDataUrl;
+          link.download = obj.fileName;
+          setTimeout(() => link.click(), 100 * idx);
+        };
+        
+        img.src = obj.dataUrl;
       });
     }
     
@@ -553,16 +726,63 @@
     async function downloadZip() {
       const zip = new JSZip();
       
-      // Добавляем все объекты в архив
-      for (let i = 0; i < outputObjects.length; i++) {
-        const obj = outputObjects[i];
-        
-        // Конвертируем dataUrl в blob
-        const response = await fetch(obj.dataUrl);
-        const blob = await response.blob();
-        
-        // Добавляем в архив
-        zip.file(obj.fileName, blob);
+      // Если обработка краев отключена, добавляем оригинальные изображения в архив
+      if (!edgeProcessingSettings.enabled) {
+        // Добавляем все объекты в архив
+        for (let i = 0; i < outputObjects.length; i++) {
+          const obj = outputObjects[i];
+          
+          // Конвертируем dataUrl в blob
+          const response = await fetch(obj.dataUrl);
+          const blob = await response.blob();
+          
+          // Добавляем в архив
+          zip.file(obj.fileName, blob);
+        }
+      } else {
+        // Обрабатываем каждое изображение перед добавлением в архив
+        for (let i = 0; i < outputObjects.length; i++) {
+          const obj = outputObjects[i];
+          
+          // Создаем временный canvas для обработки
+          const tempCanvas = document.createElement('canvas');
+          const tempCtx = tempCanvas.getContext('2d');
+          const img = new Image();
+          
+          // Загружаем изображение и обрабатываем его
+          await new Promise(resolve => {
+            img.onload = function() {
+              tempCanvas.width = img.width;
+              tempCanvas.height = img.height;
+              tempCtx.drawImage(img, 0, 0);
+              
+              // Получаем данные изображения
+              const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+              
+              // Обрабатываем края
+              const processedData = EdgeProcessor.processEdges(imageData, {
+                blurRadius: edgeProcessingSettings.blurRadius,
+                threshold: edgeProcessingSettings.threshold,
+                edgeOnly: edgeProcessingSettings.edgeOnly
+              });
+              
+              // Возвращаем обработанные данные на canvas
+              tempCtx.putImageData(processedData, 0, 0);
+              
+              resolve();
+            };
+            
+            img.src = obj.dataUrl;
+          });
+          
+          // Получаем blob из обработанного изображения
+          const blob = await new Promise(resolve => {
+            tempCanvas.toBlob(resolve, 'image/png');
+          });
+          
+          // Добавляем в архив
+          zip.file(obj.fileName, blob);
+        }
       }
       
       // Генерируем архив и скачиваем
@@ -1548,6 +1768,29 @@
         sourceImages.forEach((_, index) => splitImageObjects(index));
       }
     });
+    
+    // Обработчики событий для настроек обработки краев
+    enableEdgeProcessingCheckbox.addEventListener('change', function(e) {
+      edgeProcessingSettings.enabled = e.target.checked;
+      edgeProcessingOptions.style.display = e.target.checked ? 'block' : 'none';
+    });
+    
+    blurRadiusSlider.addEventListener('input', function(e) {
+      edgeProcessingSettings.blurRadius = parseInt(e.target.value);
+      blurRadiusValue.textContent = e.target.value;
+    });
+    
+    thresholdSlider.addEventListener('input', function(e) {
+      edgeProcessingSettings.threshold = parseInt(e.target.value);
+      thresholdValue.textContent = e.target.value;
+    });
+    
+    edgeOnlyCheckbox.addEventListener('change', function(e) {
+      edgeProcessingSettings.edgeOnly = e.target.checked;
+    });
+    
+    // Инициализация настроек обработки краев
+    edgeProcessingOptions.style.display = edgeProcessingSettings.enabled ? 'block' : 'none';
     
     // Кнопки действий
     downloadAllBtn.addEventListener('click', downloadAllObjects);
