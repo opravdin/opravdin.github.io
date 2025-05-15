@@ -110,7 +110,8 @@
           </div>
           
           <div class="subdivision-tools">
-            <button id="applySubdivisionBtn" class="btn-add"><i class="fas fa-check"></i> Применить разделение</button>
+            <button id="applySubdivisionBtn" class="btn-add"><i class="fas fa-eye"></i> Показать результат</button>
+            <button id="saveSubdivisionBtn" class="btn-add" style="display: none;"><i class="fas fa-save"></i> Сохранить разделение</button>
             <button id="resetSubdivisionBtn" class="btn-warning"><i class="fas fa-undo"></i> Сбросить</button>
           </div>
         </div>
@@ -167,6 +168,7 @@
     const brushSizeSlider = document.getElementById('brushSizeSlider');
     const brushSizeValue = document.getElementById('brushSizeValue');
     const applySubdivisionBtn = document.getElementById('applySubdivisionBtn');
+    const saveSubdivisionBtn = document.getElementById('saveSubdivisionBtn');
     const resetSubdivisionBtn = document.getElementById('resetSubdivisionBtn');
     
     // Функция для проверки совпадения цвета с учетом допуска
@@ -627,6 +629,9 @@
       currentSubdivisionIndex = -1;
       originalObjectImage = null;
       subdivisionMasks = [];
+      
+      // Скрываем кнопку сохранения
+      saveSubdivisionBtn.style.display = 'none';
     }
     
     // Автоматическое разделение объекта
@@ -1075,6 +1080,45 @@
       const imageData = ctx.getImageData(0, 0, width, height);
       const data = imageData.data;
       
+      // Функция для обрезки холста до размеров фактического содержимого
+      function trimCanvas(canvas) {
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
+        
+        // Находим границы непрозрачного содержимого
+        for (let y = 0; y < canvas.height; y++) {
+          for (let x = 0; x < canvas.width; x++) {
+            const idx = (y * canvas.width + x) * 4;
+            if (data[idx + 3] > 0) { // Если пиксель не прозрачный
+              minX = Math.min(minX, x);
+              minY = Math.min(minY, y);
+              maxX = Math.max(maxX, x);
+              maxY = Math.max(maxY, y);
+            }
+          }
+        }
+        
+        // Если изображение полностью прозрачное, возвращаем исходный холст
+        if (minX > maxX || minY > maxY) {
+          return canvas;
+        }
+        
+        // Создаем новый холст с обрезанными размерами
+        const trimmedCanvas = document.createElement('canvas');
+        const trimmedWidth = maxX - minX + 1;
+        const trimmedHeight = maxY - minY + 1;
+        trimmedCanvas.width = trimmedWidth;
+        trimmedCanvas.height = trimmedHeight;
+        
+        // Копируем только непрозрачную часть
+        const trimmedCtx = trimmedCanvas.getContext('2d');
+        trimmedCtx.drawImage(canvas, minX, minY, trimmedWidth, trimmedHeight, 0, 0, trimmedWidth, trimmedHeight);
+        
+        return trimmedCanvas;
+      }
+      
       // Создаем временный canvas для каждой маски
       const tempCanvases = subdivisionMasks.map((mask, index) => {
         const canvas = document.createElement('canvas');
@@ -1106,7 +1150,8 @@
         // Рисуем на временном canvas
         tempCtx.putImageData(newImageData, 0, 0);
         
-        return canvas;
+        // Обрезаем холст до размеров фактического содержимого
+        return trimCanvas(canvas);
       });
       
       // Очищаем canvas
@@ -1174,6 +1219,9 @@
       updateOutputDisplay();
       updateSourceImagesList();
       
+      // Скрываем кнопку сохранения
+      saveSubdivisionBtn.style.display = 'none';
+      
       // Закрываем модальное окно
       closeSubdivisionModal();
     }
@@ -1197,6 +1245,9 @@
       } else {
         brushSizeContainer.style.display = 'none';
       }
+      
+      // Скрываем кнопку сохранения
+      saveSubdivisionBtn.style.display = 'none';
     }
     
     // Обработчики событий
@@ -1287,13 +1338,18 @@
     applySubdivisionBtn.addEventListener('click', () => {
       if (isDrawingMode) {
         applyManualSubdivide();
-        // Если успешно разделили объект (есть маски), применяем разделение
-        if (subdivisionMasks.length >= 2) {
-          applySubdivision();
-        }
       } else {
-        applySubdivision();
+        autoSubdivide();
       }
+      
+      // Если успешно разделили объект (есть маски), показываем кнопку сохранения
+      if (subdivisionMasks.length >= 2) {
+        saveSubdivisionBtn.style.display = 'inline-block';
+      }
+    });
+    
+    saveSubdivisionBtn.addEventListener('click', () => {
+      applySubdivision();
     });
     
     resetSubdivisionBtn.addEventListener('click', resetSubdivision);
