@@ -337,7 +337,21 @@
         const tempCtx = tempCanvas.getContext('2d');
         tempCtx.drawImage(mainCanvas, minX, minY, w, h, 0, 0, w, h);
         
-        // Получаем данные изображения
+        // Получаем данные изображения и заменяем фоновый цвет на прозрачность
+        const imageData = tempCtx.getImageData(0, 0, w, h);
+        const pixelData = imageData.data;
+        
+        // Заменяем фоновый цвет на прозрачность
+        for (let i = 0; i < pixelData.length; i += 4) {
+          if (colorMatch(pixelData, i, r0, g0, b0)) {
+            pixelData[i + 3] = 0; // Устанавливаем альфа-канал в 0 (полная прозрачность)
+          }
+        }
+        
+        // Возвращаем изображение с прозрачностью на canvas
+        tempCtx.putImageData(imageData, 0, 0);
+        
+        // Получаем данные изображения с прозрачностью
         const objectDataUrl = tempCanvas.toDataURL('image/png');
         
         return {
@@ -630,10 +644,15 @@
         // Сохраняем оригинальное изображение
         originalObjectImage = img;
         
-        // Настраиваем canvas
+        // Настраиваем canvas с прозрачным фоном
         subdivisionCanvas.width = img.width;
         subdivisionCanvas.height = img.height;
         const ctx = subdivisionCanvas.getContext('2d');
+        
+        // Очищаем canvas с прозрачностью
+        ctx.clearRect(0, 0, img.width, img.height);
+        
+        // Рисуем изображение
         ctx.drawImage(img, 0, 0);
         
         // Сбрасываем режим рисования
@@ -675,15 +694,32 @@
       const width = originalObjectImage.width;
       const height = originalObjectImage.height;
       
-      // Настраиваем canvas
+      // Создаем невидимый canvas для работы с данными изображения
+      const offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = width;
+      offscreenCanvas.height = height;
+      const offscreenCtx = offscreenCanvas.getContext('2d', { alpha: true });
+      
+      // Очищаем offscreen canvas полностью
+      offscreenCtx.clearRect(0, 0, width, height);
+      
+      // Рисуем изображение на offscreen canvas
+      offscreenCtx.drawImage(originalObjectImage, 0, 0);
+      
+      // Получаем данные изображения с offscreen canvas
+      const imageData = offscreenCtx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+      
+      // Отображаем изображение на видимом canvas
       subdivisionCanvas.width = width;
       subdivisionCanvas.height = height;
-      const ctx = subdivisionCanvas.getContext('2d');
-      ctx.drawImage(originalObjectImage, 0, 0);
+      const ctx = subdivisionCanvas.getContext('2d', { alpha: true });
       
-      // Получаем данные изображения
-      const imageData = ctx.getImageData(0, 0, width, height);
-      const data = imageData.data;
+      // Полностью очищаем видимый canvas
+      ctx.clearRect(0, 0, width, height);
+      
+      // Рисуем изображение на видимом canvas
+      ctx.drawImage(originalObjectImage, 0, 0);
       
       // Получаем цвет разделителя
       const [r0, g0, b0] = hexToRgb(colorPicker.value);
@@ -723,7 +759,8 @@
             const nx = x + dx, ny = y + dy;
             if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
               const nidx = getIndex(nx, ny);
-              if (colorMatch(dataArray, nidx, r0, g0, b0)) {
+              // Проверяем совпадение цвета или прозрачность
+              if (colorMatch(dataArray, nidx, r0, g0, b0) || dataArray[nidx + 3] === 0) {
                 return true;
               }
             }
@@ -741,7 +778,8 @@
               const nx = x + dx, ny = y + dy;
               if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
                 const nidx = getIndex(nx, ny);
-                if (colorMatch(dataArray, nidx, r0, g0, b0)) {
+                // Проверяем совпадение цвета или прозрачность
+                if (colorMatch(dataArray, nidx, r0, g0, b0) || dataArray[nidx + 3] === 0) {
                   return true;
                 }
               }
@@ -766,8 +804,8 @@
           for (let x = 0; x < width; x++) {
             const idx = getIndex(x, y);
             
-            // Пропускаем пиксели фона
-            if (colorMatch(tempDataCopy, idx, r0, g0, b0)) {
+            // Пропускаем пиксели фона или прозрачные пиксели
+            if (colorMatch(tempDataCopy, idx, r0, g0, b0) || tempDataCopy[idx + 3] === 0) {
               continue;
             }
             
@@ -788,12 +826,12 @@
           console.log(`Первая итерация: ограничиваем стирание до ${maxPixelsFirstIteration} пикселей из ${pixelsToErase.length}`);
         }
         
-        // Теперь стираем отобранные пиксели
+        // Теперь стираем отобранные пиксели, делая их прозрачными
         for (const [x, y, idx] of pixelsToProcess) {
           tempData[idx] = r0;
           tempData[idx + 1] = g0;
           tempData[idx + 2] = b0;
-          tempData[idx + 3] = 255;
+          tempData[idx + 3] = 0; // Делаем пиксель полностью прозрачным
           changed = true;
         }
         
@@ -822,7 +860,8 @@
             if (visited[vidx]) continue;
             
             const idx = getIndex(cx, cy);
-            if (colorMatch(tempData, idx, r0, g0, b0)) continue;
+            // Пропускаем пиксели фона или прозрачные пиксели
+            if (colorMatch(tempData, idx, r0, g0, b0) || tempData[idx + 3] === 0) continue;
             
             visited[vidx] = 1;
             pixels.push([cx, cy]);
@@ -848,7 +887,8 @@
           for (let x = 0; x < width; x++) {
             const vidx = getVisitedIndex(x, y);
             const idx = getIndex(x, y);
-            if (!visited[vidx] && !colorMatch(tempData, idx, r0, g0, b0)) {
+            // Проверяем, что пиксель не посещен, не совпадает с фоновым цветом и не прозрачный
+            if (!visited[vidx] && !colorMatch(tempData, idx, r0, g0, b0) && tempData[idx + 3] !== 0) {
               const component = floodFill(x, y);
               if (component.length > 20) {  // Игнорируем слишком маленькие компоненты
                 components.push(component);
@@ -897,9 +937,9 @@
                 // Пропускаем уже замаскированные пиксели
                 if (mask[idx]) continue;
                 
-                // Пропускаем пиксели фона
+                // Пропускаем пиксели фона или прозрачные пиксели
                 const dataIdx = getIndex(x, y);
-                if (colorMatch(data, dataIdx, r0, g0, b0)) continue;
+                if (colorMatch(data, dataIdx, r0, g0, b0) || data[dataIdx + 3] === 0) continue;
                 
                 // Проверяем, есть ли соседние пиксели в этой маске
                 let hasNeighbor = false;
@@ -954,8 +994,14 @@
         // Создаем новый ImageData из текущих данных tempData
         const tempImageData = new ImageData(new Uint8ClampedArray(tempData), width, height);
         
-        // Отображаем на холсте
-        ctx.putImageData(tempImageData, 0, 0);
+        // Отображаем на offscreen canvas
+        offscreenCtx.putImageData(tempImageData, 0, 0);
+        
+        // Очищаем видимый canvas
+        ctx.clearRect(0, 0, width, height);
+        
+        // Копируем с offscreen canvas на видимый canvas
+        ctx.drawImage(offscreenCanvas, 0, 0);
         
         // Обновляем счетчик итераций
         iterationCounter.textContent = iterations.toString();
@@ -1048,12 +1094,17 @@
       isDrawingMode = true;
       brushSizeContainer.style.display = 'flex';
       
-      // Настраиваем canvas
+      // Настраиваем canvas с прозрачным фоном
       const width = originalObjectImage.width;
       const height = originalObjectImage.height;
       subdivisionCanvas.width = width;
       subdivisionCanvas.height = height;
       const ctx = subdivisionCanvas.getContext('2d');
+      
+      // Очищаем canvas с прозрачностью
+      ctx.clearRect(0, 0, width, height);
+      
+      // Рисуем изображение
       ctx.drawImage(originalObjectImage, 0, 0);
       
       // Получаем цвет разделителя
@@ -1115,9 +1166,24 @@
       const width = originalObjectImage.width;
       const height = originalObjectImage.height;
       
-      // Получаем данные с canvas
-      const ctx = subdivisionCanvas.getContext('2d');
-      const imageData = ctx.getImageData(0, 0, width, height);
+      // Создаем невидимый canvas для работы с данными изображения
+      const offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = width;
+      offscreenCanvas.height = height;
+      const offscreenCtx = offscreenCanvas.getContext('2d', { alpha: true });
+      
+      // Очищаем offscreen canvas полностью
+      offscreenCtx.clearRect(0, 0, width, height);
+      
+      // Получаем текущее состояние видимого canvas
+      const visibleCtx = subdivisionCanvas.getContext('2d');
+      const visibleImageData = visibleCtx.getImageData(0, 0, width, height);
+      
+      // Копируем данные на offscreen canvas
+      offscreenCtx.putImageData(visibleImageData, 0, 0);
+      
+      // Получаем данные изображения с offscreen canvas
+      const imageData = offscreenCtx.getImageData(0, 0, width, height);
       const data = imageData.data;
       
       // Получаем цвет разделителя
@@ -1393,10 +1459,15 @@
       // Сбрасываем маски
       subdivisionMasks = [];
       
-      // Настраиваем canvas
+      // Настраиваем canvas с прозрачным фоном
       subdivisionCanvas.width = originalObjectImage.width;
       subdivisionCanvas.height = originalObjectImage.height;
       const ctx = subdivisionCanvas.getContext('2d');
+      
+      // Очищаем canvas с прозрачностью
+      ctx.clearRect(0, 0, originalObjectImage.width, originalObjectImage.height);
+      
+      // Рисуем изображение
       ctx.drawImage(originalObjectImage, 0, 0);
       
       // Если в режиме рисования, оставляем его активным
