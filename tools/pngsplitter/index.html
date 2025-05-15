@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Object Splitter</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="../../css/common.css">
+  <link rel="stylesheet" href="../../css/tool-styles.css">
+  <link rel="stylesheet" href="pngsplitter.css">
+</head>
+<body>
+  <div class="container">
+    <div class="breadcrumb">
+      <a href="../../index.html">Главная</a> &gt;
+      <a href="../index.html">Инструменты</a> &gt;
+      Image Object Splitter
+    </div>
+    
+    <h1><i class="fas fa-object-ungroup"></i> Image Object Splitter</h1>
+    <p class="description">Загрузите изображение и разделите его на отдельные объекты по цвету фона</p>
+    
+    <div class="controls-container">
+      <div class="control-group">
+        <label class="control-label">Загрузите изображение</label>
+        <div class="file-upload-area" id="dropArea">
+          <i class="fas fa-upload"></i>
+          <p>Перетащите изображение сюда или нажмите для выбора</p>
+          <p class="upload-hint">Также можно вставить изображение из буфера обмена (Ctrl+V)</p>
+          <input type="file" accept="image/*" id="fileInput" style="display: none;" multiple>
+        </div>
+      </div>
+      
+      <div class="control-group">
+        <label class="control-label">Разделяющий цвет</label>
+        <div class="color-picker-container">
+          <input type="color" id="colorPicker" value="#ffffff">
+          <div class="eyedropper-btn" id="eyedropperBtn" title="Выбрать цвет с изображения">
+            <i class="fas fa-eye-dropper"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="control-group">
+        <label class="control-label">Чувствительность цвета (допуск)</label>
+        <div class="tolerance-slider-container">
+          <input type="range" id="toleranceSlider" min="0" max="50" value="10" class="tolerance-slider">
+          <span id="toleranceValue" class="tolerance-value">10</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="preview-container" id="previewContainer">
+      <h2>Предпросмотр</h2>
+      <img id="previewImage" src="" alt="Предпросмотр изображения">
+    </div>
+    
+    <div class="source-images-container" id="sourceImagesContainer">
+      <h2>Загруженные изображения</h2>
+      <ul class="source-images-list" id="sourceImagesList">
+        <!-- Список загруженных изображений будет добавлен здесь -->
+      </ul>
+    </div>
+    
+    <div class="output-container">
+      <div class="output-header">
+        <h2 class="output-title">Результаты разделения</h2>
+        <div class="output-actions" id="outputActions" style="display: none;">
+          <button id="downloadAllBtn" class="btn-add"><i class="fas fa-download"></i> Скачать все файлы</button>
+          <button id="downloadZipBtn"><i class="fas fa-file-archive"></i> Скачать ZIP</button>
+          <button id="clearLastBtn" class="btn-warning"><i class="fas fa-trash-alt"></i> Удалить последние</button>
+          <button id="clearAllBtn" class="btn-danger"><i class="fas fa-trash"></i> Очистить все</button>
+        </div>
+      </div>
+      
+      <div class="output" id="output">
+        <div class="empty-output" id="emptyOutput">
+          <i class="fas fa-image"></i>
+          <p>Загрузите изображение, чтобы разделить его на объекты</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <canvas id="mainCanvas"></canvas>
+  <canvas id="tempCanvas"></canvas>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  
+  <script>
+    // Глобальные переменные
+    let isEyedropperActive = false;
+    let currentTolerance = 10;
+    let sourceImages = [];
+    let outputObjects = [];
+    let lastImageIndex = -1;
+    
+    // DOM элементы
+    const fileInput = document.getElementById('fileInput');
+    const dropArea = document.getElementById('dropArea');
+    const colorPicker = document.getElementById('colorPicker');
+    const eyedropperBtn = document.getElementById('eyedropperBtn');
+    const toleranceSlider = document.getElementById('toleranceSlider');
+    const toleranceValue = document.getElementById('toleranceValue');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewImage = document.getElementById('previewImage');
+    const sourceImagesContainer = document.getElementById('sourceImagesContainer');
+    const sourceImagesList = document.getElementById('sourceImagesList');
+    const output = document.getElementById('output');
+    const emptyOutput = document.getElementById('emptyOutput');
+    const outputActions = document.getElementById('outputActions');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const downloadZipBtn = document.getElementById('downloadZipBtn');
+    const clearLastBtn = document.getElementById('clearLastBtn');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const mainCanvas = document.getElementById('mainCanvas');
+    const tempCanvas = document.getElementById('tempCanvas');
+    
+    // Функция для проверки совпадения цвета с учетом допуска
+    function colorMatch(data, idx, r, g, b, tolerance = currentTolerance) {
+      return Math.abs(data[idx] - r) <= tolerance &&
+             Math.abs(data[idx + 1] - g) <= tolerance &&
+             Math.abs(data[idx + 2] - b) <= tolerance;
+    }
+    
+    // Функция для получения RGB из HEX
+    function hexToRgb(hex) {
+      const r = parseInt(hex.substr(1, 2), 16);
+      const g = parseInt(hex.substr(3, 2), 16);
+      const b = parseInt(hex.substr(5, 2), 16);
+      return [r, g, b];
+    }
+    
+    // Функция для получения HEX из RGB
+    function rgbToHex(r, g, b) {
+      return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+    
+    // Функция для обработки загруженного изображения
+    async function processImage(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      
+      try {
+        // Создаем объект изображения
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        await img.decode();
+        
+        // Добавляем изображение в список источников
+        const sourceIndex = sourceImages.length;
+        sourceImages.push({
+          file: file,
+          image: img,
+          width: img.width,
+          height: img.height,
+          objectCount: 0
+        });
+        
+        // Обновляем UI
+        updateSourceImagesList();
+        showPreview(img);
+        
+        // Обрабатываем изображение
+        splitImageObjects(sourceIndex);
+      } catch (error) {
+        console.error('Ошибка при обработке изображения:', error);
+        alert('Ошибка при обработке изображения: ' + error.message);
+      }
+    }
+    
+    // Функция для разделения изображения на объекты
+    function splitImageObjects(sourceIndex) {
+      const sourceImage = sourceImages[sourceIndex];
+      const img = sourceImage.image;
+      
+      // Настраиваем canvas
+      mainCanvas.width = img.width;
+      mainCanvas.height = img.height;
+      const ctx = mainCanvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      
+      // Получаем данные изображения
+      const imageData = ctx.getImageData(0, 0, img.width, img.height);
+      const data = imageData.data;
+      const visited = new Uint8Array(img.width * img.height);
+      const objects = [];
+      
+      // Получаем цвет разделителя
+      const [r0, g0, b0] = hexToRgb(colorPicker.value);
+      
+      // Функция для получения индекса пикселя
+      function getIndex(x, y) {
+        return y * img.width + x;
+      }
+      
+      // Функция заливки для выделения объекта
+      function floodFill(x, y) {
+        const queue = [[x, y]];
+        const pixels = [];
+        let minX = x, maxX = x, minY = y, maxY = y;
+        
+        while (queue.length) {
+          const [cx, cy] = queue.pop();
+          const idx = getIndex(cx, cy);
+          if (visited[idx]) continue;
+          
+          const i = idx * 4;
+          if (colorMatch(data, i, r0, g0, b0)) continue;
+          
+          visited[idx] = 1;
+          pixels.push([cx, cy]);
+          minX = Math.min(minX, cx);
+          maxX = Math.max(maxX, cx);
+          minY = Math.min(minY, cy);
+          maxY = Math.max(maxY, cy);
+          
+          // Проверяем соседние пиксели (включая диагональные)
+          for (const [dx, dy] of [[1,0], [-1,0], [0,1], [0,-1], [1,1], [-1,-1], [1,-1], [-1,1]]) {
+            const nx = cx + dx, ny = cy + dy;
+            if (nx >= 0 && ny >= 0 && nx < img.width && ny < img.height) {
+              const nidx = getIndex(nx, ny);
+              const ni = nidx * 4;
+              if (!visited[nidx] && !colorMatch(data, ni, r0, g0, b0)) {
+                queue.push([nx, ny]);
+              }
+            }
+          }
+        }
+        
+        return { pixels, bounds: [minX, minY, maxX, maxY] };
+      }
+      
+      // Находим все объекты
+      for (let y = 0; y < img.height; y++) {
+        for (let x = 0; x < img.width; x++) {
+          const idx = getIndex(x, y);
+          const i = idx * 4;
+          if (!visited[idx] && !colorMatch(data, i, r0, g0, b0)) {
+            const obj = floodFill(x, y);
+            if (obj.pixels.length > 20) {
+              objects.push(obj);
+            }
+          }
+        }
+      }
+      
+      // Обновляем счетчик объектов
+      sourceImage.objectCount = objects.length;
+      
+      // Создаем изображения для каждого объекта
+      const newObjects = objects.map((obj, index) => {
+        const { bounds } = obj;
+        const [minX, minY, maxX, maxY] = bounds;
+        const w = maxX - minX + 1;
+        const h = maxY - minY + 1;
+        
+        // Создаем временный canvas для объекта
+        tempCanvas.width = w;
+        tempCanvas.height = h;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(mainCanvas, minX, minY, w, h, 0, 0, w, h);
+        
+        // Получаем данные изображения
+        const objectDataUrl = tempCanvas.toDataURL('image/png');
+        
+        return {
+          sourceIndex: sourceIndex,
+          objectIndex: index,
+          width: w,
+          height: h,
+          dataUrl: objectDataUrl,
+          fileName: `object_${sourceIndex}_${index}.png`
+        };
+      });
+      
+      // Добавляем новые объекты в общий список
+      outputObjects = [...outputObjects, ...newObjects];
+      lastImageIndex = sourceIndex;
+      
+      // Обновляем UI
+      updateOutputDisplay();
+      updateSourceImagesList();
+    }
+    
+    // Функция для обновления списка исходных изображений
+    function updateSourceImagesList() {
+      if (sourceImages.length === 0) {
+        sourceImagesContainer.style.display = 'none';
+        return;
+      }
+      
+      sourceImagesContainer.style.display = 'block';
+      sourceImagesList.innerHTML = '';
+      
+      sourceImages.forEach((source, index) => {
+        const li = document.createElement('li');
+        li.className = 'source-image-item';
+        
+        const img = document.createElement('img');
+        img.className = 'source-image-preview';
+        img.src = URL.createObjectURL(source.file);
+        img.alt = source.file.name;
+        
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'source-image-info';
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'source-image-name';
+        nameDiv.textContent = source.file.name;
+        
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'source-image-meta';
+        metaDiv.textContent = `${source.width}x${source.height} | Объектов: ${source.objectCount}`;
+        
+        infoDiv.appendChild(nameDiv);
+        infoDiv.appendChild(metaDiv);
+        
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'source-image-actions';
+        
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'btn-add';
+        downloadBtn.innerHTML = '<i class="fas fa-download"></i> Скачать объекты';
+        downloadBtn.addEventListener('click', () => downloadSourceObjects(index));
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-danger';
+        removeBtn.innerHTML = '<i class="fas fa-trash"></i> Удалить';
+        removeBtn.addEventListener('click', () => removeSourceImage(index));
+        
+        actionsDiv.appendChild(downloadBtn);
+        actionsDiv.appendChild(removeBtn);
+        
+        li.appendChild(img);
+        li.appendChild(infoDiv);
+        li.appendChild(actionsDiv);
+        
+        sourceImagesList.appendChild(li);
+      });
+    }
+    
+    // Функция для обновления отображения результатов
+    function updateOutputDisplay() {
+      if (outputObjects.length === 0) {
+        output.innerHTML = '';
+        output.appendChild(emptyOutput);
+        outputActions.style.display = 'none';
+        return;
+      }
+      
+      output.innerHTML = '';
+      outputActions.style.display = 'flex';
+      
+      outputObjects.forEach((obj, index) => {
+        const div = document.createElement('div');
+        div.className = 'output-item';
+        div.dataset.index = index;
+        
+        const img = document.createElement('img');
+        img.src = obj.dataUrl;
+        img.alt = `Object ${index}`;
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'output-item-overlay';
+        overlay.textContent = `${obj.width}x${obj.height}`;
+        
+        const actions = document.createElement('div');
+        actions.className = 'output-item-actions';
+        
+        const downloadBtn = document.createElement('button');
+        downloadBtn.innerHTML = '<i class="fas fa-download"></i>';
+        downloadBtn.title = 'Скачать';
+        downloadBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          downloadObject(index);
+        });
+        
+        actions.appendChild(downloadBtn);
+        
+        div.appendChild(img);
+        div.appendChild(overlay);
+        div.appendChild(actions);
+        
+        output.appendChild(div);
+      });
+    }
+    
+    // Функция для показа предпросмотра
+    function showPreview(img) {
+      previewImage.src = img.src;
+      previewContainer.style.display = 'block';
+      
+      // Настраиваем пипетку
+      previewImage.addEventListener('click', function(e) {
+        if (!isEyedropperActive) return;
+        
+        const rect = previewImage.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width * img.width;
+        const y = (e.clientY - rect.top) / rect.height * img.height;
+        
+        // Получаем цвет пикселя
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        
+        const pixel = ctx.getImageData(x, y, 1, 1).data;
+        const [r, g, b] = [pixel[0], pixel[1], pixel[2]];
+        const hex = rgbToHex(r, g, b);
+        
+        // Устанавливаем цвет в пикер
+        colorPicker.value = hex;
+        
+        // Деактивируем пипетку
+        isEyedropperActive = false;
+        eyedropperBtn.classList.remove('active');
+      });
+    }
+    
+    // Функция для скачивания одного объекта
+    function downloadObject(index) {
+      const obj = outputObjects[index];
+      const link = document.createElement('a');
+      link.href = obj.dataUrl;
+      link.download = obj.fileName;
+      link.click();
+    }
+    
+    // Функция для скачивания всех объектов одного изображения
+    function downloadSourceObjects(sourceIndex) {
+      const objects = outputObjects.filter(obj => obj.sourceIndex === sourceIndex);
+      objects.forEach(obj => {
+        const link = document.createElement('a');
+        link.href = obj.dataUrl;
+        link.download = obj.fileName;
+        setTimeout(() => link.click(), 100 * obj.objectIndex);
+      });
+    }
+    
+    // Функция для скачивания всех объектов
+    function downloadAllObjects() {
+      outputObjects.forEach((obj, index) => {
+        const link = document.createElement('a');
+        link.href = obj.dataUrl;
+        link.download = obj.fileName;
+        setTimeout(() => link.click(), 100 * index);
+      });
+    }
+    
+    // Функция для скачивания ZIP-архива
+    async function downloadZip() {
+      const zip = new JSZip();
+      
+      // Добавляем все объекты в архив
+      for (let i = 0; i < outputObjects.length; i++) {
+        const obj = outputObjects[i];
+        
+        // Конвертируем dataUrl в blob
+        const response = await fetch(obj.dataUrl);
+        const blob = await response.blob();
+        
+        // Добавляем в архив
+        zip.file(obj.fileName, blob);
+      }
+      
+      // Генерируем архив и скачиваем
+      zip.generateAsync({type: 'blob'}).then(function(content) {
+        saveAs(content, 'png_objects.zip');
+      });
+    }
+    
+    // Функция для удаления исходного изображения и его объектов
+    function removeSourceImage(index) {
+      // Удаляем объекты этого изображения
+      outputObjects = outputObjects.filter(obj => obj.sourceIndex !== index);
+      
+      // Обновляем индексы для оставшихся объектов
+      outputObjects = outputObjects.map(obj => {
+        if (obj.sourceIndex > index) {
+          return {...obj, sourceIndex: obj.sourceIndex - 1};
+        }
+        return obj;
+      });
+      
+      // Удаляем изображение из списка
+      sourceImages.splice(index, 1);
+      
+      // Обновляем lastImageIndex
+      if (lastImageIndex === index) {
+        lastImageIndex = sourceImages.length - 1;
+      } else if (lastImageIndex > index) {
+        lastImageIndex--;
+      }
+      
+      // Обновляем UI
+      updateSourceImagesList();
+      updateOutputDisplay();
+    }
+    
+    // Функция для удаления результатов последней загруженной картинки
+    function clearLastResults() {
+      if (lastImageIndex === -1) return;
+      
+      // Удаляем объекты последнего изображения
+      outputObjects = outputObjects.filter(obj => obj.sourceIndex !== lastImageIndex);
+      
+      // Обновляем счетчик объектов
+      if (sourceImages[lastImageIndex]) {
+        sourceImages[lastImageIndex].objectCount = 0;
+      }
+      
+      // Обновляем UI
+      updateSourceImagesList();
+      updateOutputDisplay();
+    }
+    
+    // Функция для очистки всех результатов
+    function clearAllResults() {
+      outputObjects = [];
+      
+      // Обновляем счетчики объектов
+      sourceImages.forEach(source => {
+        source.objectCount = 0;
+      });
+      
+      // Обновляем UI
+      updateSourceImagesList();
+      updateOutputDisplay();
+    }
+    
+    // Обработчики событий
+    
+    // Загрузка файлов через input
+    fileInput.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files);
+      files.forEach(file => processImage(file));
+    });
+    
+    // Drag and drop
+    dropArea.addEventListener('click', () => fileInput.click());
+    
+    dropArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropArea.classList.add('drag-over');
+    });
+    
+    dropArea.addEventListener('dragleave', () => {
+      dropArea.classList.remove('drag-over');
+    });
+    
+    dropArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropArea.classList.remove('drag-over');
+      
+      const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+      files.forEach(file => processImage(file));
+    });
+    
+    // Вставка из буфера обмена
+    document.addEventListener('paste', (e) => {
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+      
+      for (const item of items) {
+        if (item.type.indexOf('image') === 0) {
+          const file = item.getAsFile();
+          processImage(file);
+          break;
+        }
+      }
+    });
+    
+    // Изменение цвета
+    colorPicker.addEventListener('change', () => {
+      // Если есть загруженные изображения, пересчитываем объекты
+      if (lastImageIndex !== -1) {
+        clearAllResults();
+        sourceImages.forEach((_, index) => splitImageObjects(index));
+      }
+    });
+    
+    // Пипетка
+    eyedropperBtn.addEventListener('click', () => {
+      isEyedropperActive = !isEyedropperActive;
+      eyedropperBtn.classList.toggle('active', isEyedropperActive);
+    });
+    
+    // Изменение допуска
+    toleranceSlider.addEventListener('input', (e) => {
+      currentTolerance = parseInt(e.target.value);
+      toleranceValue.textContent = currentTolerance;
+      
+      // Если есть загруженные изображения, пересчитываем объекты
+      if (lastImageIndex !== -1) {
+        clearAllResults();
+        sourceImages.forEach((_, index) => splitImageObjects(index));
+      }
+    });
+    
+    // Кнопки действий
+    downloadAllBtn.addEventListener('click', downloadAllObjects);
+    downloadZipBtn.addEventListener('click', downloadZip);
+    clearLastBtn.addEventListener('click', clearLastResults);
+    clearAllBtn.addEventListener('click', clearAllResults);
+  </script>
+</body>
+</html>
