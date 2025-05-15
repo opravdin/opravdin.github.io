@@ -3,225 +3,143 @@
  * Содержит функции для скачивания отдельных объектов, групп объектов и ZIP-архивов
  */
 
-// Функция для скачивания одного объекта
-function downloadObject(index) {
-  const outputObjects = ImageProcessor.getOutputObjects();
-  const obj = outputObjects[index];
+/**
+ * Создает и активирует ссылку для скачивания файла
+ * @param {string} url - URL для скачивания
+ * @param {string} filename - Имя файла
+ * @param {number} delay - Задержка перед скачиванием в мс
+ */
+function createDownloadLink(url, filename, delay = 0) {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
   
-  // Если обработка краев отключена, скачиваем оригинальное изображение
-  if (!window.edgeProcessingSettings.enabled) {
-    const link = document.createElement('a');
-    link.href = obj.dataUrl;
-    link.download = obj.fileName;
+  if (delay > 0) {
+    setTimeout(() => link.click(), delay);
+  } else {
     link.click();
-    return;
   }
-  
-  // Создаем временный canvas для обработки
-  const tempCanvas = document.createElement('canvas');
-  const tempCtx = tempCanvas.getContext('2d');
-  const img = new Image();
-  
-  img.onload = function() {
-    tempCanvas.width = img.width;
-    tempCanvas.height = img.height;
-    tempCtx.drawImage(img, 0, 0);
-    
-    // Получаем данные изображения
-    const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
-    
-    // Обрабатываем края
-    const processedData = EdgeProcessor.processEdges(imageData, {
-      blurRadius: window.edgeProcessingSettings.blurRadius,
-      threshold: window.edgeProcessingSettings.threshold,
-      edgeOnly: window.edgeProcessingSettings.edgeOnly
-    });
-    
-    // Возвращаем обработанные данные на canvas
-    tempCtx.putImageData(processedData, 0, 0);
-    
-    // Создаем новый dataUrl
-    const processedDataUrl = tempCanvas.toDataURL('image/png');
-    
-    // Скачиваем обработанное изображение
-    const link = document.createElement('a');
-    link.href = processedDataUrl;
-    link.download = obj.fileName;
-    link.click();
-  };
-  
-  img.src = obj.dataUrl;
 }
 
-// Функция для скачивания всех объектов одного изображения
-function downloadSourceObjects(sourceIndex) {
+/**
+ * Обрабатывает изображение с помощью EdgeProcessor
+ * @param {string} dataUrl - Data URL изображения
+ * @returns {Promise<string>} - Promise с обработанным Data URL
+ */
+function processImageWithEdges(dataUrl) {
+  return new Promise((resolve) => {
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = function() {
+      tempCanvas.width = img.width;
+      tempCanvas.height = img.height;
+      tempCtx.drawImage(img, 0, 0);
+      
+      // Получаем данные изображения
+      const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+      
+      // Обрабатываем края
+      const processedData = EdgeProcessor.processEdges(imageData, {
+        blurRadius: window.edgeProcessingSettings.blurRadius,
+        threshold: window.edgeProcessingSettings.threshold,
+        edgeOnly: window.edgeProcessingSettings.edgeOnly
+      });
+      
+      // Возвращаем обработанные данные на canvas
+      tempCtx.putImageData(processedData, 0, 0);
+      
+      // Создаем новый dataUrl
+      resolve(tempCanvas.toDataURL('image/png'));
+    };
+    
+    img.src = dataUrl;
+  });
+}
+
+/**
+ * Получает Blob из Data URL изображения
+ * @param {string} dataUrl - Data URL изображения
+ * @returns {Promise<Blob>} - Promise с Blob
+ */
+async function getImageBlob(dataUrl) {
+  if (window.edgeProcessingSettings.enabled) {
+    // Если обработка краев включена, сначала обрабатываем изображение
+    const processedDataUrl = await processImageWithEdges(dataUrl);
+    const response = await fetch(processedDataUrl);
+    return await response.blob();
+  } else {
+    // Иначе просто конвертируем dataUrl в blob
+    const response = await fetch(dataUrl);
+    return await response.blob();
+  }
+}
+
+/**
+ * Скачивает одно изображение с обработкой краев при необходимости
+ * @param {Object} obj - Объект изображения
+ * @param {number} delay - Задержка перед скачиванием в мс
+ */
+async function downloadProcessedImage(obj, delay = 0) {
+  if (window.edgeProcessingSettings.enabled) {
+    // Если обработка краев включена, обрабатываем изображение
+    const processedDataUrl = await processImageWithEdges(obj.dataUrl);
+    createDownloadLink(processedDataUrl, obj.fileName, delay);
+  } else {
+    // Иначе скачиваем оригинальное изображение
+    createDownloadLink(obj.dataUrl, obj.fileName, delay);
+  }
+}
+
+/**
+ * Скачивает один объект
+ * @param {number} index - Индекс объекта
+ */
+async function downloadObject(index) {
+  const outputObjects = ImageProcessor.getOutputObjects();
+  const obj = outputObjects[index];
+  await downloadProcessedImage(obj);
+}
+
+/**
+ * Скачивает все объекты одного изображения
+ * @param {number} sourceIndex - Индекс исходного изображения
+ */
+async function downloadSourceObjects(sourceIndex) {
   const outputObjects = ImageProcessor.getOutputObjects();
   const objects = outputObjects.filter(obj => obj.sourceIndex === sourceIndex);
   
-  // Если обработка краев отключена, скачиваем оригинальные изображения
-  if (!window.edgeProcessingSettings.enabled) {
-    objects.forEach(obj => {
-      const link = document.createElement('a');
-      link.href = obj.dataUrl;
-      link.download = obj.fileName;
-      setTimeout(() => link.click(), 100 * obj.objectIndex);
-    });
-    return;
-  }
-  
-  // Обрабатываем и скачиваем каждое изображение
+  // Скачиваем каждый объект с задержкой
   objects.forEach((obj, idx) => {
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-    const img = new Image();
-    
-    img.onload = function() {
-      tempCanvas.width = img.width;
-      tempCanvas.height = img.height;
-      tempCtx.drawImage(img, 0, 0);
-      
-      // Получаем данные изображения
-      const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
-      
-      // Обрабатываем края
-      const processedData = EdgeProcessor.processEdges(imageData, {
-        blurRadius: window.edgeProcessingSettings.blurRadius,
-        threshold: window.edgeProcessingSettings.threshold,
-        edgeOnly: window.edgeProcessingSettings.edgeOnly
-      });
-      
-      // Возвращаем обработанные данные на canvas
-      tempCtx.putImageData(processedData, 0, 0);
-      
-      // Создаем новый dataUrl
-      const processedDataUrl = tempCanvas.toDataURL('image/png');
-      
-      // Скачиваем обработанное изображение
-      const link = document.createElement('a');
-      link.href = processedDataUrl;
-      link.download = obj.fileName;
-      setTimeout(() => link.click(), 100 * idx);
-    };
-    
-    img.src = obj.dataUrl;
+    downloadProcessedImage(obj, 100 * idx);
   });
 }
 
-// Функция для скачивания всех объектов
-function downloadAllObjects() {
+/**
+ * Скачивает все объекты
+ */
+async function downloadAllObjects() {
   const outputObjects = ImageProcessor.getOutputObjects();
   
-  // Если обработка краев отключена, скачиваем оригинальные изображения
-  if (!window.edgeProcessingSettings.enabled) {
-    outputObjects.forEach((obj, index) => {
-      const link = document.createElement('a');
-      link.href = obj.dataUrl;
-      link.download = obj.fileName;
-      setTimeout(() => link.click(), 100 * index);
-    });
-    return;
-  }
-  
-  // Обрабатываем и скачиваем каждое изображение
+  // Скачиваем каждый объект с задержкой
   outputObjects.forEach((obj, idx) => {
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-    const img = new Image();
-    
-    img.onload = function() {
-      tempCanvas.width = img.width;
-      tempCanvas.height = img.height;
-      tempCtx.drawImage(img, 0, 0);
-      
-      // Получаем данные изображения
-      const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
-      
-      // Обрабатываем края
-      const processedData = EdgeProcessor.processEdges(imageData, {
-        blurRadius: window.edgeProcessingSettings.blurRadius,
-        threshold: window.edgeProcessingSettings.threshold,
-        edgeOnly: window.edgeProcessingSettings.edgeOnly
-      });
-      
-      // Возвращаем обработанные данные на canvas
-      tempCtx.putImageData(processedData, 0, 0);
-      
-      // Создаем новый dataUrl
-      const processedDataUrl = tempCanvas.toDataURL('image/png');
-      
-      // Скачиваем обработанное изображение
-      const link = document.createElement('a');
-      link.href = processedDataUrl;
-      link.download = obj.fileName;
-      setTimeout(() => link.click(), 100 * idx);
-    };
-    
-    img.src = obj.dataUrl;
+    downloadProcessedImage(obj, 100 * idx);
   });
 }
 
-// Функция для скачивания ZIP-архива
+/**
+ * Скачивает ZIP-архив со всеми объектами
+ */
 async function downloadZip() {
   const outputObjects = ImageProcessor.getOutputObjects();
   const zip = new JSZip();
   
-  // Если обработка краев отключена, добавляем оригинальные изображения в архив
-  if (!window.edgeProcessingSettings.enabled) {
-    // Добавляем все объекты в архив
-    for (let i = 0; i < outputObjects.length; i++) {
-      const obj = outputObjects[i];
-      
-      // Конвертируем dataUrl в blob
-      const response = await fetch(obj.dataUrl);
-      const blob = await response.blob();
-      
-      // Добавляем в архив
-      zip.file(obj.fileName, blob);
-    }
-  } else {
-    // Обрабатываем каждое изображение перед добавлением в архив
-    for (let i = 0; i < outputObjects.length; i++) {
-      const obj = outputObjects[i];
-      
-      // Создаем временный canvas для обработки
-      const tempCanvas = document.createElement('canvas');
-      const tempCtx = tempCanvas.getContext('2d');
-      const img = new Image();
-      
-      // Загружаем изображение и обрабатываем его
-      await new Promise(resolve => {
-        img.onload = function() {
-          tempCanvas.width = img.width;
-          tempCanvas.height = img.height;
-          tempCtx.drawImage(img, 0, 0);
-          
-          // Получаем данные изображения
-          const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
-          
-          // Обрабатываем края
-          const processedData = EdgeProcessor.processEdges(imageData, {
-            blurRadius: window.edgeProcessingSettings.blurRadius,
-            threshold: window.edgeProcessingSettings.threshold,
-            edgeOnly: window.edgeProcessingSettings.edgeOnly
-          });
-          
-          // Возвращаем обработанные данные на canvas
-          tempCtx.putImageData(processedData, 0, 0);
-          
-          resolve();
-        };
-        
-        img.src = obj.dataUrl;
-      });
-      
-      // Получаем blob из обработанного изображения
-      const blob = await new Promise(resolve => {
-        tempCanvas.toBlob(resolve, 'image/png');
-      });
-      
-      // Добавляем в архив
-      zip.file(obj.fileName, blob);
-    }
+  // Добавляем все объекты в архив
+  for (let i = 0; i < outputObjects.length; i++) {
+    const obj = outputObjects[i];
+    const blob = await getImageBlob(obj.dataUrl);
+    zip.file(obj.fileName, blob);
   }
   
   // Генерируем архив и скачиваем
