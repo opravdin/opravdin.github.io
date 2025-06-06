@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор точечных паттернов для 3D сканирования</title>
+    <link rel="stylesheet" href="../../css/common.css">
+    <link rel="stylesheet" href="../../css/tool-styles.css">
+    <link rel="stylesheet" href="dotpattern.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Генератор точечных паттернов</h1>
+            <p class="subtitle">Создание паттернов для калибровки 3D сканеров</p>
+        </header>
+
+        <section class="description">
+            <h2>О инструменте</h2>
+            <p>Этот инструмент генерирует калибровочные паттерны с апериодическим расположением точек для фотограмметрии и 3D сканирования. Каждая точка имеет уникальную локальную конфигурацию соседей, что позволяет алгоритмам компьютерного зрения надёжно идентифицировать и сопоставлять маркеры.</p>
+            
+            <h3>Алгоритм генерации</h3>
+            <p>Используется алгоритм апериодической генерации с проверкой уникальности:</p>
+            <ul>
+                <li><strong>Минимальное расстояние</strong> — между точками соблюдается заданное минимальное расстояние (в 3-4 раза больше диаметра точки)</li>
+                <li><strong>Уникальность конфигурации</strong> — для каждой точки проверяется уникальность расположения её 5 ближайших соседей путём сравнения "отпечатков" из расстояний и углов</li>
+                <li><strong>Защита от коллинеарности</strong> — алгоритм исключает расположение трёх и более точек на одной линии</li>
+                <li><strong>Равномерное покрытие</strong> — точки распределяются по всей площади листа без кластеризации</li>
+            </ul>
+        </section>
+
+        <main>
+            <section class="controls">
+                <div class="control-group">
+                    <label for="sheetCount">Количество листов:</label>
+                    <input type="number" id="sheetCount" min="1" max="10" value="1">
+                </div>
+
+                <div class="control-group">
+                    <label>Размер точек:</label>
+                    <div class="dot-sizes">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="dotSize" value="9" checked>
+                            9 мм
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="dotSize" value="6">
+                            6 мм
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="dotSize" value="3">
+                            3 мм
+                        </label>
+                        <div class="custom-size">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="dotSize" value="custom">
+                                Другой:
+                            </label>
+                            <input type="number" id="customSize" min="1" max="20" placeholder="мм" disabled>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="density">Плотность точек:</label>
+                    <input type="range" id="density" min="5" max="60" value="30" step="5">
+                    <span id="densityValue">30%</span>
+                    <span id="approxCount" class="approx-count">(~50-70 точек)</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="inverted">
+                        Инверсия (чёрные точки на белом фоне)
+                    </label>
+                    <p class="hint">Режим инверсии позволяет распечатать шаблон для размещения самоклеящихся маркеров. Распечатайте паттерн на обычном принтере, затем наклейте круглые белые маркеры на чёрные точки.</p>
+                </div>
+
+                <div class="button-group">
+                    <button id="generateBtn" class="primary-button">Сгенерировать</button>
+                    <button id="printBtn" class="secondary-button" disabled>Печать</button>
+                    <button id="exportBtn" class="secondary-button" disabled>Экспорт SVG</button>
+                </div>
+            </section>
+
+            <section class="preview-section">
+                <h2>Предпросмотр</h2>
+                <div id="previewContainer" class="preview-container">
+                    <p class="placeholder">Нажмите "Сгенерировать" для создания паттерна</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <a href="../" class="back-link">← Вернуться к списку инструментов</a>
+        </footer>
+    </div>
+
+    <script src="aperiodic-generator.js"></script>
+    <script src="dotpattern.js"></script>
+</body>
+</html>
