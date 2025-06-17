@@ -1,0 +1,225 @@
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+#desiredAmount {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+#desiredAmount:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.commission-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.radio-label:hover {
+    background-color: #f8f9fa;
+}
+
+.radio-label input[type="radio"] {
+    margin-right: 6px;
+}
+
+.radio-label input[type="radio"]:checked + span {
+    font-weight: 600;
+    color: #007bff;
+}
+
+#customCommission {
+    width: 60px;
+    margin-left: 8px;
+    padding: 4px 8px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.primary-btn {
+    width: 100%;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 500;
+    color: white;
+    background-color: #007bff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.primary-btn:hover {
+    background-color: #0056b3;
+}
+
+.secondary-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+    color: #007bff;
+    background-color: white;
+    border: 1px solid #007bff;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    width: auto !important;
+    display: inline-block !important;
+    margin-top: 0 !important;
+}
+
+.secondary-btn:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+.copy-text-btn {
+    flex-shrink: 0;
+}
+
+.results-section {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.results-section h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #e9ecef;
+    flex-wrap: nowrap;
+}
+
+.result-item:last-of-type {
+    border-bottom: none;
+}
+
+.result-label {
+    font-weight: 500;
+    color: #666;
+}
+
+.result-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+}
+
+.result-with-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.copy-price-btn {
+    padding: 6px 10px;
+    font-size: 16px;
+    line-height: 1;
+    min-width: auto;
+    flex-shrink: 0;
+}
+
+.pickup-text {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid #e9ecef;
+}
+
+.pickup-text h3 {
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #333;
+}
+
+.text-variant {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.text-to-copy {
+    flex: 1;
+    padding: 12px;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+.pickup-price {
+    font-weight: 600;
+    color: #007bff;
+}
+
+@media (max-width: 600px) {
+    .commission-options {
+        flex-direction: column;
+    }
+    
+    .radio-label {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .text-variant {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .text-variant .secondary-btn {
+        width: 100%;
+    }
+    
+    .result-with-copy {
+        gap: 5px;
+    }
+}
