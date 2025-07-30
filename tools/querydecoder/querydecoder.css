@@ -1,0 +1,232 @@
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.section {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.url-display {
+    font-family: monospace;
+    background: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px;
+    word-break: break-all;
+    margin: 10px 0;
+}
+
+.params-container {
+    margin-top: 20px;
+}
+
+.params-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.params-table th,
+.params-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.params-table th {
+    background: #f8f8f8;
+    font-weight: bold;
+    color: #333;
+}
+
+.params-table tr:hover {
+    background: #f9f9f9;
+}
+
+.param-name {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.param-value {
+    color: #27ae60;
+    word-break: break-word;
+}
+
+.param-type {
+    color: #7f8c8d;
+    font-size: 0.9em;
+}
+
+.param-encoded {
+    font-family: monospace;
+    font-size: 0.85em;
+    color: #95a5a6;
+    word-break: break-all;
+}
+
+.no-params {
+    color: #7f8c8d;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+}
+
+.form-example {
+    margin-bottom: 30px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 6px;
+}
+
+.form-example h3 {
+    margin-top: 0;
+    color: #2c3e50;
+}
+
+.form-example form {
+    margin: 15px 0;
+    padding: 15px;
+    background: white;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+}
+
+.form-example input[type="text"],
+.form-example input[type="email"],
+.form-example input[type="number"],
+.form-example select,
+.form-example textarea {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    margin: 8px 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-example textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.form-example label {
+    display: block;
+    margin: 10px 0;
+    cursor: pointer;
+}
+
+.form-example label input[type="checkbox"] {
+    display: inline;
+    width: auto;
+    margin-right: 8px;
+}
+
+.form-example button {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+.form-example button:hover {
+    background: #2980b9;
+}
+
+.code-example {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin-top: 15px;
+}
+
+.code-example code {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.manual-input {
+    display: flex;
+    gap: 10px;
+}
+
+.manual-input input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.manual-input button {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.manual-input button:hover {
+    background: #229954;
+}
+
+.url-info {
+    background: #f8f8f8;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 15px 0;
+}
+
+.url-info p {
+    margin: 5px 0;
+}
+
+.url-info strong {
+    color: #2c3e50;
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .section {
+        padding: 15px;
+    }
+    
+    .params-table {
+        font-size: 14px;
+    }
+    
+    .params-table th,
+    .params-table td {
+        padding: 8px 5px;
+    }
+    
+    .manual-input {
+        flex-direction: column;
+    }
+    
+    .manual-input button {
+        width: 100%;
+    }
+}

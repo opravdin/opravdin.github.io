@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Декодер параметров URL</title>
+    <link rel="stylesheet" href="../../css/common.css">
+    <link rel="stylesheet" href="../../css/tool-styles.css">
+    <link rel="stylesheet" href="querydecoder.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Декодер параметров URL</h1>
+        
+        <div class="section">
+            <h2>Параметры текущего URL</h2>
+            <div id="current-url" class="url-display"></div>
+            <div id="params-display" class="params-container">
+                <p class="no-params">Параметры запроса в текущем URL не найдены.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Пример формы</h2>
+            
+            <div class="form-example">
+                <h3>GET-запрос на эту страницу</h3>
+                <form action="" method="GET">
+                    <input type="text" name="name" placeholder="Ваше имя" value="Иван Иванов">
+                    <input type="email" name="email" placeholder="Email" value="ivan@example.com">
+                    <input type="number" name="age" placeholder="Возраст" value="25">
+                    <button type="submit">Отправить</button>
+                </form>
+                <pre class="code-example"><code>&lt;form action="" method="GET"&gt;
+    &lt;input type="text" name="name" value="Иван Иванов"&gt;
+    &lt;input type="email" name="email" value="ivan@example.com"&gt;
+    &lt;input type="number" name="age" value="25"&gt;
+    &lt;button type="submit"&gt;Отправить&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Ручной ввод URL</h2>
+            <div class="manual-input">
+                <input type="text" id="manual-url" placeholder="Вставьте URL с параметрами запроса">
+                <button onclick="decodeManualURL()">Декодировать URL</button>
+            </div>
+            <div id="manual-params-display" class="params-container hidden"></div>
+        </div>
+    </div>
+
+    <script src="querydecoder.js"></script>
+</body>
+</html>
