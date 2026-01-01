@@ -536,6 +536,88 @@ select:focus {
     font-size: 13px;
 }
 
+.guest-share-breakdown {
+    padding: 8px 12px;
+    margin: 6px 0;
+    background: var(--gray-50);
+    border-radius: 4px;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.guest-share-name {
+    font-weight: 500;
+    color: var(--gray-800);
+}
+
+.guest-share-amount {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.guest-share-amount strong {
+    color: var(--primary);
+    font-size: 15px;
+}
+
+.tooltip-icon {
+    color: var(--gray-400);
+    font-size: 13px;
+    cursor: help;
+}
+
+.bill-expenses-section {
+    margin: 12px 0;
+    padding: 12px;
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+}
+
+.bill-expenses-title {
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--gray-200);
+    font-size: 13px;
+}
+
+.expense-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+    color: var(--gray-700);
+}
+
+.expense-item:not(:last-child) {
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.expense-amount {
+    font-weight: 500;
+    color: var(--gray-900);
+}
+
+.bill-cost-item {
+    padding: 8px 12px;
+    margin: 6px 0;
+    background: var(--blue-50);
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--gray-700);
+}
+
+.bill-cost-item strong {
+    color: var(--gray-900);
+}
+
 .transactions-info {
     background: var(--blue-50);
     border: 1px solid var(--blue-100);
@@ -577,17 +659,19 @@ select:focus {
     margin-top: 16px;
     padding-top: 16px;
     border-top: 1px solid var(--gray-200);
+    display: flex;
+    gap: 8px;
 }
 
 .btn-export {
-    width: 100%;
+    flex: 1;
     padding: 10px 16px;
     background: var(--primary);
     color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     transition: all 0.2s;
 }
@@ -598,6 +682,16 @@ select:focus {
 
 .btn-export:active {
     transform: scale(0.98);
+}
+
+.btn-export-secondary {
+    background: white;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+}
+
+.btn-export-secondary:hover {
+    background: var(--blue-50);
 }
 
 /* Responsive */

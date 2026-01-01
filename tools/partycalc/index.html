@@ -1091,7 +1091,7 @@
 
             // Show each bill's summary if more than one bill
             if (billsData.length > 1) {
-                html += `<h3><i class="fas fa-file-invoice"></i> Детали по счетам:</h3>`;
+                html += `<h3><i class="fas fa-file-invoice"></i> Итоги по счетам:</h3>`;
                 billsData.forEach(bd => {
                     html += `
                         <div class="bill-summary">
@@ -1102,6 +1102,63 @@
                 });
             }
 
+            // Show per-guest total with tooltip
+            if (billsData.length > 0) {
+                html += `<h3><i class="fas fa-users"></i> Доля каждого участника:</h3>`;
+
+                // Calculate each guest's total share
+                const guestShares = {};
+                partyData.guests.forEach((guest, idx) => {
+                    guestShares[idx] = {
+                        guest,
+                        billShares: {},
+                        total: 0
+                    };
+                });
+
+                billsData.forEach(bd => {
+                    bd.participants.forEach(p => {
+                        const share = bd.perPersonShare * (1 + (p.guest.plusOnes || 0));
+                        guestShares[p.index].billShares[bd.bill.name] = share;
+                        guestShares[p.index].total += share;
+                    });
+                });
+
+                Object.entries(guestShares).forEach(([idx, data]) => {
+                    if (data.total > 0) {
+                        const guestName = data.guest.plusOnes > 0
+                            ? `${data.guest.name} (+${data.guest.plusOnes})`
+                            : data.guest.name;
+
+                        // Build tooltip with breakdown
+                        let tooltip = '';
+                        if (billsData.length > 1 || data.guest.plusOnes > 0) {
+                            tooltip = 'Расчет: ';
+                            const details = [];
+                            Object.entries(data.billShares).forEach(([billName, amount]) => {
+                                const multiplier = 1 + (data.guest.plusOnes || 0);
+                                if (multiplier > 1) {
+                                    details.push(`${billName} × ${multiplier} = ${amount.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₽`);
+                                } else {
+                                    details.push(`${billName}: ${amount.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₽`);
+                                }
+                            });
+                            tooltip = details.join(', ');
+                        }
+
+                        html += `<div class="guest-share-breakdown">`;
+                        html += `<div class="guest-share-name">${guestName}</div>`;
+                        html += `<div class="guest-share-amount">`;
+                        html += `<strong>${data.total.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₽</strong>`;
+                        if (tooltip) {
+                            html += ` <i class="fas fa-info-circle tooltip-icon" title="${tooltip}"></i>`;
+                        }
+                        html += `</div></div>`;
+                    }
+                });
+            }
+
+
             if (payments.length === 0) {
                 html += `
                     <div class="summary-card">
@@ -1110,7 +1167,7 @@
                 `;
             } else {
                 html += `
-                    <h3><i class="fas fa-exchange-alt"></i> Итоговые платежи:</h3>
+                    <h3><i class="fas fa-money-bill-transfer"></i> Кто кому переводит:</h3>
                     <div class="transactions-info">
                         <p><i class="fas fa-info-circle"></i> Всего транзакций: <strong>${payments.length}</strong></p>
                     </div>
@@ -1142,23 +1199,32 @@
 
             html += `
                 <div class="export-section">
-                    <button id="export-messenger" class="btn-export">
-                        <i class="fas fa-share-alt"></i> Экспорт для мессенджера
+                    <button id="export-full" class="btn-export">
+                        <i class="fas fa-file-alt"></i> Полный отчет
+                    </button>
+                    <button id="export-short" class="btn-export btn-export-secondary">
+                        <i class="fas fa-list"></i> Только платежи
                     </button>
                 </div>
             `;
 
             resultsEl.innerHTML = html;
 
-            // Add export button handler
-            const exportBtn = document.getElementById('export-messenger');
-            if (exportBtn) {
-                exportBtn.addEventListener('click', () => exportForMessenger(billsData, payments));
+            // Add export button handlers
+            const exportFullBtn = document.getElementById('export-full');
+            const exportShortBtn = document.getElementById('export-short');
+
+            if (exportFullBtn) {
+                exportFullBtn.addEventListener('click', () => exportFull(billsData, payments, totalExpenses, totalPeople, treasurerIndex));
+            }
+
+            if (exportShortBtn) {
+                exportShortBtn.addEventListener('click', () => exportShort(payments, treasurerIndex));
             }
         }
 
-        // Export for messenger (multi-bill support)
-        function exportForMessenger(billsData, payments) {
+        // Full export with all details
+        function exportFull(billsData, payments, totalExpenses, totalPeople, treasurerIndex) {
             let text = '🎉 Расчет расходов на вечеринку\n\n';
 
             // Export each bill
@@ -1194,7 +1260,7 @@
                 text += '✅ Все гости потратили одинаковую сумму.\nНикаких платежей не требуется.\n';
             } else {
                 text += '━━━━━━━━━━━━━━━━━━━━━━\n';
-                text += '💸 ИТОГОВЫЕ ПЛАТЕЖИ:\n\n';
+                text += '💸 КТО КОМУ ПЕРЕВОДИТ:\n\n';
 
                 payments.forEach(payment => {
                     const fromGuest = partyData.guests[payment.from];
@@ -1208,24 +1274,65 @@
                         ? `${toGuest.name} (+${toGuest.plusOnes})`
                         : toGuest.name;
 
-                    text += `${fromGuestDisplay} → ${toGuestDisplay}: ${payment.amount.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₽\n`;
+                    text += `• ${fromGuestDisplay} → ${toGuestDisplay}: ${payment.amount.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₽\n`;
                 });
 
                 text += `\n✅ Всего транзакций: ${payments.length}\n`;
             }
 
-            // Copy to clipboard
+            copyToClipboard(text);
+        }
+
+        // Short export - only payments
+        function exportShort(payments, treasurerIndex) {
+            let text = '💸 КТО КОМУ ПЕРЕВОДИТ:\n\n';
+
+            if (treasurerIndex !== null && treasurerIndex !== undefined) {
+                const treasurer = partyData.guests[treasurerIndex];
+                if (treasurer) {
+                    text += `📌 Казначей: ${treasurer.name}\n\n`;
+                }
+            }
+
+            if (payments.length === 0) {
+                text += '✅ Все гости потратили одинаковую сумму.\nНикаких платежей не требуется.';
+            } else {
+                payments.forEach(payment => {
+                    const fromGuest = partyData.guests[payment.from];
+                    const toGuest = partyData.guests[payment.to];
+
+                    const fromGuestDisplay = fromGuest.plusOnes > 0
+                        ? `${fromGuest.name} (+${fromGuest.plusOnes})`
+                        : fromGuest.name;
+
+                    const toGuestDisplay = toGuest.plusOnes > 0
+                        ? `${toGuest.name} (+${toGuest.plusOnes})`
+                        : toGuest.name;
+
+                    text += `• ${fromGuestDisplay} → ${toGuestDisplay}: ${payment.amount.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₽\n`;
+                });
+
+                text += `\n✅ Всего транзакций: ${payments.length}`;
+            }
+
+            copyToClipboard(text);
+        }
+
+        // Helper to copy text and show notification
+        function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
                 // Show success notification
-                const exportBtn = document.getElementById('export-messenger');
-                const originalText = exportBtn.innerHTML;
-                exportBtn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
-                exportBtn.style.backgroundColor = '#4CAF50';
+                const exportBtns = document.querySelectorAll('.btn-export');
+                exportBtns.forEach(btn => {
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
+                    btn.style.backgroundColor = '#10b981';
 
-                setTimeout(() => {
-                    exportBtn.innerHTML = originalText;
-                    exportBtn.style.backgroundColor = '';
-                }, 2000);
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.style.backgroundColor = '';
+                    }, 2000);
+                });
             }).catch(err => {
                 console.error('Failed to copy:', err);
                 alert('Не удалось скопировать в буфер обмена. Попробуйте еще раз.');
