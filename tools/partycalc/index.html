@@ -54,6 +54,24 @@
                 <p class="setting-hint">Автоматически выбирает лучшую стратегию: минимум платежей, каждый гость платит 1 раз одному человеку</p>
             </div>
 
+            <div class="setting-group">
+                <label class="checkbox-option">
+                    <input type="checkbox" id="round-up" checked>
+                    <span>Округлять переводы до целых рублей вверх</span>
+                </label>
+            </div>
+
+            <div class="setting-group">
+                <label class="checkbox-option">
+                    <input type="checkbox" id="tips-enabled">
+                    <span>Чаевые казначею</span>
+                </label>
+                <div id="tips-container" style="display: none; margin-top: 8px;">
+                    <label class="setting-label" for="tips-amount">Размер чаевых (₽ или %):</label>
+                    <input type="text" id="tips-amount" placeholder="Например: 100 или 5%">
+                </div>
+            </div>
+
             <div id="manual-settings" style="display: none;">
                 <div class="setting-group">
                     <label class="setting-label">Стратегия для счетов:</label>
@@ -129,7 +147,10 @@
             autoOptimize: true,
             billStrategy: 'unified', // unified or separate
             mode: 'aggregated', // direct or aggregated
-            budgetKeeper: null
+            budgetKeeper: null,
+            roundUp: true,
+            tipsEnabled: false,
+            tipsAmount: ''
         };
         
         // DOM elements
@@ -140,6 +161,10 @@
         const clearStorageBtn = document.getElementById('clear-storage');
         const resultsEl = document.getElementById('results');
         const autoOptimizeCheckbox = document.getElementById('auto-optimize');
+        const roundUpCheckbox = document.getElementById('round-up');
+        const tipsEnabledCheckbox = document.getElementById('tips-enabled');
+        const tipsContainer = document.getElementById('tips-container');
+        const tipsAmountInput = document.getElementById('tips-amount');
         const manualSettingsDiv = document.getElementById('manual-settings');
         const billStrategyRadios = document.getElementsByName('bill-strategy');
         const modeRadios = document.getElementsByName('calculation-mode');
@@ -221,6 +246,18 @@
                         }
                     }
 
+                    // Set round up and tips
+                    if (roundUpCheckbox) {
+                        roundUpCheckbox.checked = partyData.roundUp !== false;
+                    }
+                    if (tipsEnabledCheckbox) {
+                        tipsEnabledCheckbox.checked = partyData.tipsEnabled === true;
+                        tipsContainer.style.display = partyData.tipsEnabled ? 'block' : 'none';
+                    }
+                    if (tipsAmountInput && partyData.tipsAmount) {
+                        tipsAmountInput.value = partyData.tipsAmount;
+                    }
+
                     // Update budget keeper visibility
                     updateBudgetKeeperVisibility();
                 } catch (e) {
@@ -293,7 +330,10 @@
                 autoOptimize: true,
                 billStrategy: 'unified',
                 mode: 'aggregated',
-                budgetKeeper: null
+                budgetKeeper: null,
+                roundUp: true,
+                tipsEnabled: false,
+                tipsAmount: ''
             };
             renderBillTabs();
             renderGuestList();
@@ -1003,6 +1043,19 @@
                 }
             }
 
+            // Apply tips to treasurer
+            if (partyData.tipsEnabled && partyData.tipsAmount && usedTreasurer !== null) {
+                finalPayments = applyTips(finalPayments, usedTreasurer, billsData);
+            }
+
+            // Round up if enabled
+            if (partyData.roundUp) {
+                finalPayments = finalPayments.map(p => ({
+                    ...p,
+                    amount: Math.ceil(p.amount)
+                }));
+            }
+
             // Filter out small payments
             finalPayments = finalPayments.filter(p => p.amount >= 1);
 
@@ -1012,6 +1065,47 @@
 
             // Display results
             displayResults(billsData, finalPayments, overallTotalExpenses, overallTotalPeople, usedTreasurer);
+        }
+
+        // Apply tips to payments to treasurer
+        function applyTips(payments, treasurerIndex, billsData) {
+            const tipsStr = partyData.tipsAmount.trim();
+            if (!tipsStr) return payments;
+
+            const isPercentage = tipsStr.endsWith('%');
+
+            if (isPercentage) {
+                // Percentage from total expenses
+                const percent = parseFloat(tipsStr.slice(0, -1));
+                if (isNaN(percent)) return payments;
+
+                const totalExpenses = billsData.reduce((sum, bd) => sum + bd.totalExpenses, 0);
+                const totalTips = totalExpenses * (percent / 100);
+
+                // Count payers (excluding treasurer)
+                const payers = payments.filter(p => p.from !== treasurerIndex && p.to === treasurerIndex);
+                if (payers.length === 0) return payments;
+
+                const tipsPerPayer = totalTips / payers.length;
+
+                return payments.map(p => {
+                    if (p.from !== treasurerIndex && p.to === treasurerIndex) {
+                        return { ...p, amount: p.amount + tipsPerPayer };
+                    }
+                    return p;
+                });
+            } else {
+                // Fixed amount from each participant
+                const tipsPerPerson = parseFloat(tipsStr);
+                if (isNaN(tipsPerPerson)) return payments;
+
+                return payments.map(p => {
+                    if (p.from !== treasurerIndex && p.to === treasurerIndex) {
+                        return { ...p, amount: p.amount + tipsPerPerson };
+                    }
+                    return p;
+                });
+            }
         }
 
         // Helper functions for multi-bill payments
@@ -1433,6 +1527,35 @@
             autoOptimizeCheckbox.addEventListener('change', (e) => {
                 partyData.autoOptimize = e.target.checked;
                 manualSettingsDiv.style.display = e.target.checked ? 'none' : 'block';
+                updateBudgetKeeperVisibility();
+                saveToStorage();
+                scheduleRecalculation();
+            });
+        }
+
+        // Round up checkbox change
+        if (roundUpCheckbox) {
+            roundUpCheckbox.addEventListener('change', (e) => {
+                partyData.roundUp = e.target.checked;
+                saveToStorage();
+                scheduleRecalculation();
+            });
+        }
+
+        // Tips enabled checkbox change
+        if (tipsEnabledCheckbox) {
+            tipsEnabledCheckbox.addEventListener('change', (e) => {
+                partyData.tipsEnabled = e.target.checked;
+                tipsContainer.style.display = e.target.checked ? 'block' : 'none';
+                saveToStorage();
+                scheduleRecalculation();
+            });
+        }
+
+        // Tips amount input change
+        if (tipsAmountInput) {
+            tipsAmountInput.addEventListener('input', (e) => {
+                partyData.tipsAmount = e.target.value;
                 saveToStorage();
                 scheduleRecalculation();
             });
