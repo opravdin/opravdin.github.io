@@ -5,18 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Калькулятор расходов на вечеринку</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../../css/common.css">
-    <link rel="stylesheet" href="../../css/tool-styles.css">
     <link rel="stylesheet" href="partycalc.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.0/math.min.js"></script>
 </head>
 <body>
-    <div class="container">
+    <div class="page-header">
         <h1><i class="fas fa-glass-cheers"></i> Калькулятор расходов на вечеринку</h1>
         <p class="description">Добавьте гостей и их расходы, чтобы рассчитать, кто кому должен заплатить</p>
-        
-        <div id="guests-container">
+    </div>
+
+    <div class="two-column-layout">
+        <div class="left-panel">
+            <div id="bills-tabs" class="bills-tabs">
+                <!-- Bill tabs will be rendered here -->
+            </div>
+
+            <div id="guests-container">
             <h2><i class="fas fa-users"></i> Список гостей</h2>
+            <p class="description">Добавьте всех участников один раз. Для каждого счета можно выбрать, кто участвует.</p>
             <div class="guest-header">
+                <div class="guest-participate">✓</div>
                 <div class="guest-name">Имя</div>
                 <div class="guest-expense">
                     <div>Расходы (₽)</div>
@@ -36,48 +44,91 @@
         </div>
         
         <div class="mode-selection">
-            <h2><i class="fas fa-cog"></i> Режим расчета</h2>
-            <div class="description" style="text-align: left; margin-top: 15px;">
-                <p><strong>Режимы расчета:</strong></p>
-                <ul style="margin-top: 5px; margin-bottom: 15px;">
-                    <li><strong>Прямой расчет:</strong> Каждый гость платит свою долю напрямую другим гостям. <em>Идеально для небольших групп или когда только 1 человек имел расходы.</em></li>
-                    <li><strong>Через казначея:</strong> Гости платят или получают деньги через выбранного казначея. <em>Лучше для больших компаний, когда плативших несколько. Все скидываются казначею, казначей распределяет деньги по расходовавшим</em></li>
-                </ul>
-            </div>
-            <div class="radio-group">
-                <label class="radio-option">
-                    <input type="radio" name="calculation-mode" value="direct" checked>
-                    <span>Прямой расчет</span>
+            <h2><i class="fas fa-cog"></i> Настройки расчета</h2>
+
+            <div class="setting-group">
+                <label class="checkbox-option main-checkbox">
+                    <input type="checkbox" id="auto-optimize" checked>
+                    <span><i class="fas fa-magic"></i> Автоматическая оптимизация</span>
                 </label>
-                <label class="radio-option">
-                    <input type="radio" name="calculation-mode" value="aggregated">
-                    <span>Через казначея</span>
-                </label>
+                <p class="setting-hint">Автоматически выбирает лучшую стратегию: минимум платежей, каждый гость платит 1 раз одному человеку</p>
             </div>
-            <div id="budget-keeper-container" class="budget-keeper-selection" style="display: none;">
-                <label for="budget-keeper">Выберите казначея:</label>
-                <select id="budget-keeper" class="form-control">
-                    <option value="">Выберите гостя</option>
-                </select>
+
+            <div id="manual-settings" style="display: none;">
+                <div class="setting-group">
+                    <label class="setting-label">Стратегия для счетов:</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="bill-strategy" value="unified" checked>
+                            <span>Общая (рекомендуется)</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="bill-strategy" value="separate">
+                            <span>Раздельная по счетам</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label class="setting-label">Метод расчета:</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="calculation-mode" value="aggregated" checked>
+                            <span>Через казначея</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="calculation-mode" value="direct">
+                            <span>Прямой расчет</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="budget-keeper-container" class="setting-group">
+                    <label class="setting-label" for="budget-keeper">Казначей:</label>
+                    <select id="budget-keeper">
+                        <option value="">Выберите гостя</option>
+                    </select>
+                </div>
             </div>
-            <div class="description" style="text-align: left; margin-top: 15px;">
-                <p><i class="fas fa-info-circle"></i> <strong>+1 режим:</strong> Если гость приводит с собой дополнительных людей (семью, партнеров), укажите их количество в поле "+1". Основной гость платит за всех своих +1.</p>
+
+            <div class="setting-group">
+                <p class="setting-hint"><i class="fas fa-info-circle"></i> <strong>+1 режим:</strong> Если гость приводит с собой дополнительных людей, укажите их количество. Основной гость платит за всех своих +1.</p>
             </div>
         </div>
-        
-        <button id="calculate"><i class="fas fa-calculator"></i> Рассчитать</button>
-        <button id="clear-storage" class="btn-danger"><i class="fas fa-trash"></i> Очистить данные</button>
-    </div>
-    
-    <div id="results" class="container" style="display: none;">
-        <!-- Results will be displayed here -->
+
+        <div class="action-buttons">
+            <button id="calculate"><i class="fas fa-calculator"></i> Рассчитать</button>
+            <button id="clear-storage" class="btn-danger"><i class="fas fa-trash"></i> Очистить данные</button>
+        </div>
+        </div>
+
+        <div class="right-panel">
+            <div id="results" class="results-container">
+                <div class="empty-results">
+                    <i class="fas fa-chart-line"></i>
+                    <p>Результаты расчета появятся здесь</p>
+                    <p class="hint">Добавьте гостей и нажмите "Рассчитать"</p>
+                </div>
+            </div>
+        </div>
     </div>
     
     <script>
         // Data model
         let partyData = {
-            guests: [],
-            mode: 'direct',
+            guests: [], // Shared guest list
+            bills: [
+                {
+                    id: 'bill-0',
+                    name: 'Основной счет',
+                    participants: [], // indices of guests
+                    expenses: {} // guest index: expense amount
+                }
+            ],
+            activeBillId: 'bill-0',
+            autoOptimize: true,
+            billStrategy: 'unified', // unified or separate
+            mode: 'aggregated', // direct or aggregated
             budgetKeeper: null
         };
         
@@ -88,16 +139,55 @@
         const calculateBtn = document.getElementById('calculate');
         const clearStorageBtn = document.getElementById('clear-storage');
         const resultsEl = document.getElementById('results');
+        const autoOptimizeCheckbox = document.getElementById('auto-optimize');
+        const manualSettingsDiv = document.getElementById('manual-settings');
+        const billStrategyRadios = document.getElementsByName('bill-strategy');
         const modeRadios = document.getElementsByName('calculation-mode');
         const budgetKeeperContainer = document.getElementById('budget-keeper-container');
         const budgetKeeperSelect = document.getElementById('budget-keeper');
         
+        // Migrate old data format to new multi-bill format
+        function migrateOldData(data) {
+            // Check if data is in old format (has expenses in guests)
+            if (data.guests && data.guests.length > 0 && data.guests[0].hasOwnProperty('expenses')) {
+                const migratedData = {
+                    guests: data.guests.map(g => ({
+                        name: g.name,
+                        plusOnes: g.plusOnes || 0
+                    })),
+                    bills: [{
+                        id: 'bill-0',
+                        name: 'Основной счет',
+                        participants: data.guests.map((_, i) => i),
+                        expenses: data.guests.reduce((acc, g, i) => {
+                            acc[i] = {
+                                amount: g.expenses || 0,
+                                expression: g.expenseExpression || null
+                            };
+                            return acc;
+                        }, {})
+                    }],
+                    activeBillId: 'bill-0',
+                    autoOptimize: true,
+                    billStrategy: 'unified',
+                    mode: 'aggregated',
+                    budgetKeeper: null
+                };
+                return migratedData;
+            }
+            return data;
+        }
+
         // Load data from localStorage
         function loadFromStorage() {
             const savedData = localStorage.getItem('partyCalcData');
             if (savedData) {
                 try {
-                    partyData = JSON.parse(savedData);
+                    let data = JSON.parse(savedData);
+                    data = migrateOldData(data);
+                    partyData = data;
+
+                    renderBillTabs();
                     renderGuestList();
                     updateBudgetKeeperOptions();
                     
@@ -116,6 +206,23 @@
                     if (partyData.mode === 'aggregated' && partyData.budgetKeeper !== null) {
                         budgetKeeperSelect.value = partyData.budgetKeeper;
                     }
+
+                    // Set auto-optimize checkbox and show/hide manual settings
+                    if (autoOptimizeCheckbox) {
+                        autoOptimizeCheckbox.checked = partyData.autoOptimize !== false;
+                        manualSettingsDiv.style.display = partyData.autoOptimize ? 'none' : 'block';
+                    }
+
+                    // Set bill strategy
+                    for (const radio of billStrategyRadios) {
+                        if (radio.value === (partyData.billStrategy || 'unified')) {
+                            radio.checked = true;
+                            break;
+                        }
+                    }
+
+                    // Update budget keeper visibility
+                    updateBudgetKeeperVisibility();
                 } catch (e) {
                     console.error('Error loading data from localStorage:', e);
                     clearStorage();
@@ -128,31 +235,221 @@
             localStorage.setItem('partyCalcData', JSON.stringify(partyData));
         }
         
+        // Auto-recalculation with debounce
+        let recalculateTimeout = null;
+
+        function scheduleRecalculation() {
+            clearTimeout(recalculateTimeout);
+            recalculateTimeout = setTimeout(() => {
+                autoCalculate();
+            }, 500); // 500ms debounce
+        }
+
+        function autoCalculate() {
+            // Validate data before calculating
+            if (partyData.guests.length < 2) {
+                showPlaceholder('Добавьте минимум 2 гостей для расчета');
+                return;
+            }
+
+            const emptyNames = partyData.guests.some(guest => !guest.name.trim());
+            if (emptyNames) {
+                showPlaceholder('Укажите имена всех гостей');
+                return;
+            }
+
+            // Only check for treasurer in manual mode
+            if (!partyData.autoOptimize && partyData.mode === 'aggregated' && partyData.budgetKeeper === null) {
+                showPlaceholder('Выберите казначея для режима "Через казначея"');
+                return;
+            }
+
+            // All validations passed, calculate
+            calculatePayments();
+        }
+
+        function showPlaceholder(message) {
+            const resultsEl = document.getElementById('results');
+            resultsEl.innerHTML = `
+                <div class="empty-results">
+                    <i class="fas fa-info-circle"></i>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
         // Clear localStorage
         function clearStorage() {
             localStorage.removeItem('partyCalcData');
             partyData = {
                 guests: [],
-                mode: 'direct',
+                bills: [{
+                    id: 'bill-0',
+                    name: 'Основной счет',
+                    participants: [],
+                    expenses: {}
+                }],
+                activeBillId: 'bill-0',
+                autoOptimize: true,
+                billStrategy: 'unified',
+                mode: 'aggregated',
                 budgetKeeper: null
             };
+            renderBillTabs();
             renderGuestList();
             updateBudgetKeeperOptions();
-            resultsEl.style.display = 'none';
-            
-            // Reset mode to direct
+            showPlaceholder('Добавьте гостей для начала работы');
+
+            // Reset UI
+            autoOptimizeCheckbox.checked = true;
+            manualSettingsDiv.style.display = 'none';
             modeRadios[0].checked = true;
-            budgetKeeperContainer.style.display = 'none';
+            billStrategyRadios[0].checked = true;
+        }
+
+        // Update budget keeper visibility based on mode
+        function updateBudgetKeeperVisibility() {
+            const showKeeper = !partyData.autoOptimize && partyData.mode === 'aggregated';
+            budgetKeeperContainer.style.display = showKeeper ? 'block' : 'none';
         }
         
+        // Get active bill
+        function getActiveBill() {
+            return partyData.bills.find(b => b.id === partyData.activeBillId) || partyData.bills[0];
+        }
+
+        // Render bill tabs
+        function renderBillTabs() {
+            const tabsContainer = document.getElementById('bills-tabs');
+            tabsContainer.innerHTML = '';
+
+            partyData.bills.forEach((bill, index) => {
+                const tab = document.createElement('button');
+                tab.className = 'bill-tab' + (bill.id === partyData.activeBillId ? ' active' : '');
+
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = bill.name;
+                nameSpan.className = 'bill-tab-name';
+                tab.appendChild(nameSpan);
+
+                // Add edit and close buttons
+                const actionsWrapper = document.createElement('span');
+                actionsWrapper.className = 'bill-tab-actions';
+
+                const editBtn = document.createElement('span');
+                editBtn.className = 'bill-tab-edit';
+                editBtn.innerHTML = '<i class="fas fa-pen"></i>';
+                editBtn.title = 'Переименовать';
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    renameBill(bill.id);
+                };
+                actionsWrapper.appendChild(editBtn);
+
+                // Add close button if more than one bill
+                if (partyData.bills.length > 1) {
+                    const closeBtn = document.createElement('span');
+                    closeBtn.className = 'bill-tab-close';
+                    closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                    closeBtn.title = 'Удалить счет';
+                    closeBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        removeBill(bill.id);
+                    };
+                    actionsWrapper.appendChild(closeBtn);
+                }
+
+                tab.appendChild(actionsWrapper);
+                tab.onclick = () => switchToBill(bill.id);
+
+                tabsContainer.appendChild(tab);
+            });
+
+            // Add "+" button to create new bill
+            const addBtn = document.createElement('button');
+            addBtn.className = 'add-bill-btn';
+            addBtn.innerHTML = '<i class="fas fa-plus"></i> Счет';
+            addBtn.onclick = addBill;
+            tabsContainer.appendChild(addBtn);
+        }
+
+        // Rename a bill with prompt
+        function renameBill(billId) {
+            const bill = partyData.bills.find(b => b.id === billId);
+            if (!bill) return;
+
+            const newName = prompt('Введите новое название счета:', bill.name);
+            if (newName && newName.trim() && newName.trim() !== bill.name) {
+                bill.name = newName.trim();
+                saveToStorage();
+                renderBillTabs();
+                scheduleRecalculation();
+            }
+        }
+
+        // Switch to a different bill
+        function switchToBill(billId) {
+            partyData.activeBillId = billId;
+            renderBillTabs();
+            renderGuestList();
+            saveToStorage();
+            scheduleRecalculation();
+        }
+
+        // Add a new bill
+        function addBill() {
+            const billNumber = partyData.bills.length + 1;
+            const newBill = {
+                id: `bill-${Date.now()}`,
+                name: `Дополнительный счет ${billNumber - 1}`,
+                participants: partyData.guests.map((_, i) => i), // All guests by default
+                expenses: {}
+            };
+            partyData.bills.push(newBill);
+            partyData.activeBillId = newBill.id;
+            renderBillTabs();
+            renderGuestList();
+            saveToStorage();
+            scheduleRecalculation();
+        }
+
+        // Remove a bill
+        function removeBill(billId) {
+            if (partyData.bills.length <= 1) {
+                alert('Должен остаться хотя бы один счет');
+                return;
+            }
+
+            if (confirm('Удалить этот счет?')) {
+                partyData.bills = partyData.bills.filter(b => b.id !== billId);
+
+                // Switch to first bill if we deleted the active one
+                if (partyData.activeBillId === billId) {
+                    partyData.activeBillId = partyData.bills[0].id;
+                }
+
+                renderBillTabs();
+                renderGuestList();
+                saveToStorage();
+                scheduleRecalculation();
+            }
+        }
+
         // Add a new guest
         function addGuest() {
+            const guestIndex = partyData.guests.length;
             partyData.guests.push({
                 name: '',
-                expenses: 0,
-                plusOnes: 0,
-                expenseExpression: null
+                plusOnes: 0
             });
+
+            // Add guest to all bills as participant by default
+            partyData.bills.forEach(bill => {
+                bill.participants.push(guestIndex);
+                bill.expenses[guestIndex] = { amount: 0, expression: null };
+            });
+
+            renderBillTabs();
             renderGuestList();
             updateBudgetKeeperOptions();
             saveToStorage();
@@ -161,16 +458,37 @@
         // Remove a guest
         function removeGuest(index) {
             partyData.guests.splice(index, 1);
-            
+
+            // Remove from all bills and adjust indices
+            partyData.bills.forEach(bill => {
+                // Remove from participants
+                bill.participants = bill.participants
+                    .filter(i => i !== index)
+                    .map(i => i > index ? i - 1 : i);
+
+                // Remove expenses and adjust keys
+                const newExpenses = {};
+                Object.keys(bill.expenses).forEach(key => {
+                    const idx = parseInt(key);
+                    if (idx < index) {
+                        newExpenses[idx] = bill.expenses[key];
+                    } else if (idx > index) {
+                        newExpenses[idx - 1] = bill.expenses[key];
+                    }
+                });
+                bill.expenses = newExpenses;
+            });
+
             // If the budget keeper was removed, reset it
             if (partyData.budgetKeeper === index) {
                 partyData.budgetKeeper = null;
-            } 
+            }
             // If the budget keeper was after the removed guest, adjust the index
             else if (partyData.budgetKeeper > index) {
                 partyData.budgetKeeper--;
             }
-            
+
+            renderBillTabs();
             renderGuestList();
             updateBudgetKeeperOptions();
             saveToStorage();
@@ -181,26 +499,20 @@
             partyData.guests[index].name = name;
             updateBudgetKeeperOptions();
             saveToStorage();
+            scheduleRecalculation();
         }
         
-        // Safe expression evaluation function
+        // Safe expression evaluation function using math.js
         function evaluateExpression(expression) {
-            // Only allow numbers and basic arithmetic operators
-            if (!/^[0-9\+\-\*\/\.\(\)\s]+$/.test(expression)) {
-                throw new Error('Invalid characters in expression');
-            }
-            
-            // Remove leading zeros from numbers to prevent octal interpretation
-            // This regex finds numbers and removes leading zeros, but preserves single zero
-            expression = expression.replace(/\b0+(\d+)/g, '$1');
-            
-            // Handle expressions with parentheses
-            // First, remove any leading zeros before parentheses
-            expression = expression.replace(/^0+(\()/g, '$1');
-            
             try {
-                // Use a simple calculation approach instead of eval or Function
-                const result = new Function('return ' + expression)();
+                // Use math.js for safe evaluation (no code execution)
+                const result = math.evaluate(expression);
+
+                // Ensure result is a number
+                if (typeof result !== 'number' || !isFinite(result)) {
+                    throw new Error('Result is not a valid number');
+                }
+
                 console.log('Calculated expression:', expression, '=', result);
                 return result;
             } catch (e) {
@@ -209,24 +521,29 @@
             }
         }
         
-        // Update guest expenses
+        // Update guest expenses for active bill
         function updateGuestExpenses(index, expenses) {
+            const activeBill = getActiveBill();
+            if (!activeBill.expenses[index]) {
+                activeBill.expenses[index] = { amount: 0, expression: null };
+            }
+
             // Check if the input contains arithmetic operators
             if (/[\+\-\*\/]/.test(expenses)) {
                 try {
-                    // Store the original expression
-                    partyData.guests[index].expenseExpression = expenses;
-                    
                     // Calculate the result safely
                     const result = evaluateExpression(expenses);
                     const numericResult = parseFloat(result);
-                    
+
                     if (isNaN(numericResult)) {
                         throw new Error('Result is not a number');
                     }
-                    
-                    partyData.guests[index].expenses = numericResult;
-                    
+
+                    activeBill.expenses[index] = {
+                        amount: numericResult,
+                        expression: expenses
+                    };
+
                     // Update the UI to show the result
                     const guestRow = document.querySelectorAll('.guest-row')[index];
                     if (guestRow) {
@@ -247,76 +564,86 @@
                 } catch (e) {
                     console.error('Error calculating expression:', e);
                     // If calculation fails, just use the input as is
-                    partyData.guests[index].expenses = parseFloat(expenses) || 0;
-                    partyData.guests[index].expenseExpression = null;
-                    
-                    // Remove result display if it exists
-                    const guestRow = document.querySelectorAll('.guest-row')[index];
-                    if (guestRow) {
-                        const expenseContainer = guestRow.querySelector('.expense-container');
-                        if (expenseContainer) {
-                            const inputWrapper = expenseContainer.querySelector('.expense-input-wrapper');
-                            if (inputWrapper) {
-                                const resultDisplay = inputWrapper.querySelector('.expense-result');
-                                if (resultDisplay) {
-                                    inputWrapper.removeChild(resultDisplay);
-                                }
-                            }
-                        }
-                    }
+                    activeBill.expenses[index] = {
+                        amount: parseFloat(expenses) || 0,
+                        expression: null
+                    };
                 }
             } else {
                 // Regular number input
-                partyData.guests[index].expenses = parseFloat(expenses) || 0;
-                partyData.guests[index].expenseExpression = null;
-                
-                // Remove result display if it exists
-                const guestRow = document.querySelectorAll('.guest-row')[index];
-                if (guestRow) {
-                    const expenseContainer = guestRow.querySelector('.expense-container');
-                    if (expenseContainer) {
-                        const inputWrapper = expenseContainer.querySelector('.expense-input-wrapper');
-                        if (inputWrapper) {
-                            const resultDisplay = inputWrapper.querySelector('.expense-result');
-                            if (resultDisplay) {
-                                inputWrapper.removeChild(resultDisplay);
-                            }
-                        }
-                    }
-                }
+                activeBill.expenses[index] = {
+                    amount: parseFloat(expenses) || 0,
+                    expression: null
+                };
             }
             saveToStorage();
+            scheduleRecalculation();
         }
-        
+
+        // Toggle guest participation in active bill
+        function toggleGuestParticipation(index, participating) {
+            const activeBill = getActiveBill();
+            if (participating) {
+                if (!activeBill.participants.includes(index)) {
+                    activeBill.participants.push(index);
+                }
+                if (!activeBill.expenses[index]) {
+                    activeBill.expenses[index] = { amount: 0, expression: null };
+                }
+            } else {
+                activeBill.participants = activeBill.participants.filter(i => i !== index);
+            }
+            saveToStorage();
+            scheduleRecalculation();
+        }
+
         // Update guest plus ones
         function updateGuestPlusOnes(index, plusOnes) {
             partyData.guests[index].plusOnes = parseInt(plusOnes) || 0;
             saveToStorage();
+            scheduleRecalculation();
         }
         
         // Render the guest list
         function renderGuestList() {
+            const activeBill = getActiveBill();
+
             // Clear the guest list
             while (guestListEl.firstChild) {
                 guestListEl.removeChild(guestListEl.firstChild);
             }
-            
+
             // Show empty state if no guests
             if (partyData.guests.length === 0) {
                 guestListEl.appendChild(emptyGuestsEl);
                 return;
             }
-            
+
             // Hide empty state
             if (emptyGuestsEl.parentNode === guestListEl) {
                 guestListEl.removeChild(emptyGuestsEl);
             }
-            
+
             // Add each guest
             partyData.guests.forEach((guest, index) => {
                 const guestRow = document.createElement('div');
                 guestRow.className = 'guest-row';
-                
+
+                // Participation checkbox
+                const participateCheckbox = document.createElement('input');
+                participateCheckbox.type = 'checkbox';
+                participateCheckbox.className = 'guest-participate';
+                participateCheckbox.checked = activeBill.participants.includes(index);
+                participateCheckbox.title = 'Участвует в этом счете';
+                participateCheckbox.addEventListener('change', (e) => {
+                    toggleGuestParticipation(index, e.target.checked);
+                });
+
+                const participateDiv = document.createElement('div');
+                participateDiv.className = 'guest-participate';
+                participateDiv.appendChild(participateCheckbox);
+
+                // Name input
                 const nameInput = document.createElement('input');
                 nameInput.type = 'text';
                 nameInput.className = 'guest-name';
@@ -325,46 +652,51 @@
                 nameInput.addEventListener('input', (e) => {
                     updateGuestName(index, e.target.value);
                 });
-                
+
+                // Expense input
                 const expenseInput = document.createElement('input');
-                expenseInput.type = 'text'; // Changed from 'number' to allow expressions
+                expenseInput.type = 'text';
                 expenseInput.className = 'guest-expense';
                 expenseInput.placeholder = 'Число или формула';
-                
-                // Set value only if it's not 0 or empty
-                if (guest.expenseExpression) {
-                    expenseInput.value = guest.expenseExpression;
-                } else if (guest.expenses > 0) {
-                    expenseInput.value = guest.expenses;
+                expenseInput.disabled = !activeBill.participants.includes(index);
+
+                // Get expense from active bill
+                const billExpense = activeBill.expenses[index] || { amount: 0, expression: null };
+
+                if (billExpense.expression) {
+                    expenseInput.value = billExpense.expression;
+                } else if (billExpense.amount > 0) {
+                    expenseInput.value = billExpense.amount;
                 } else {
                     expenseInput.value = '';
                 }
-                
+
                 expenseInput.title = 'Можно вводить числа или формулы (например: 1000+500)';
-                
+
                 // Create a container for the expense input and result display
                 const expenseContainer = document.createElement('div');
                 expenseContainer.className = 'expense-container';
-                
+
                 // Create a wrapper for input and result to keep them on the same line
                 const inputWrapper = document.createElement('div');
                 inputWrapper.className = 'expense-input-wrapper';
                 inputWrapper.appendChild(expenseInput);
-                
+
                 // Add result display if there's an expression
-                if (guest.expenseExpression) {
+                if (billExpense.expression) {
                     const resultDisplay = document.createElement('span');
                     resultDisplay.className = 'expense-result';
-                    resultDisplay.textContent = `= ${guest.expenses} ₽`;
+                    resultDisplay.textContent = `= ${billExpense.amount} ₽`;
                     inputWrapper.appendChild(resultDisplay);
                 }
-                
+
                 expenseContainer.appendChild(inputWrapper);
-                
+
                 expenseInput.addEventListener('input', (e) => {
                     updateGuestExpenses(index, e.target.value);
                 });
-                
+
+                // Plus ones input
                 const plusOnesInput = document.createElement('input');
                 plusOnesInput.type = 'number';
                 plusOnesInput.className = 'guest-plus-ones';
@@ -375,19 +707,21 @@
                 plusOnesInput.addEventListener('input', (e) => {
                     updateGuestPlusOnes(index, e.target.value);
                 });
-                
+
+                // Remove button
                 const removeBtn = document.createElement('button');
                 removeBtn.className = 'btn-remove guest-action';
                 removeBtn.innerHTML = '<i class="fas fa-times"></i>';
                 removeBtn.addEventListener('click', () => {
                     removeGuest(index);
                 });
-                
+
+                guestRow.appendChild(participateDiv);
                 guestRow.appendChild(nameInput);
                 guestRow.appendChild(expenseContainer);
                 guestRow.appendChild(plusOnesInput);
                 guestRow.appendChild(removeBtn);
-                
+
                 guestListEl.appendChild(guestRow);
             });
         }
@@ -411,164 +745,389 @@
             }
         }
         
-        // Calculate payments
+        // Auto-optimize: find best treasurer (who spent the most across all bills)
+        function findOptimalTreasurer(billsData) {
+            const totalExpenses = {};
+            billsData.forEach(bd => {
+                bd.participants.forEach(p => {
+                    if (!totalExpenses[p.index]) {
+                        totalExpenses[p.index] = 0;
+                    }
+                    totalExpenses[p.index] += p.expense;
+                });
+            });
+
+            let maxExpense = 0;
+            let treasurerIndex = 0;
+            Object.entries(totalExpenses).forEach(([idx, expense]) => {
+                if (expense > maxExpense) {
+                    maxExpense = expense;
+                    treasurerIndex = parseInt(idx);
+                }
+            });
+
+            return treasurerIndex;
+        }
+
+        // Calculate payments for all bills
         function calculatePayments() {
             // Check if there are at least 2 guests
             if (partyData.guests.length < 2) {
                 alert('Добавьте хотя бы двух гостей для расчета');
                 return;
             }
-            
+
             // Check if all guests have names
             const emptyNames = partyData.guests.some(guest => !guest.name.trim());
             if (emptyNames) {
                 alert('Пожалуйста, укажите имена всех гостей');
                 return;
             }
-            
-            // Check if budget keeper is selected in aggregated mode
-            if (partyData.mode === 'aggregated' && partyData.budgetKeeper === null) {
-                alert('Выберите казначея для режима "Через казначея"');
+
+            // Prepare bills data
+            const billsData = [];
+            partyData.bills.forEach(bill => {
+                const participants = bill.participants.map(idx => ({
+                    index: idx,
+                    guest: partyData.guests[idx],
+                    expense: (bill.expenses[idx] || { amount: 0 }).amount
+                }));
+
+                if (participants.length < 2) return;
+
+                const totalExpenses = participants.reduce((sum, p) => sum + p.expense, 0);
+                const totalPeople = participants.reduce((sum, p) => sum + 1 + (p.guest.plusOnes || 0), 0);
+                const perPersonShare = totalExpenses / totalPeople;
+
+                billsData.push({
+                    bill,
+                    participants,
+                    totalExpenses,
+                    totalPeople,
+                    perPersonShare
+                });
+            });
+
+            if (billsData.length === 0) {
+                showPlaceholder('Добавьте участников в счета');
                 return;
             }
-            
-            // Calculate total expenses
-            const totalExpenses = partyData.guests.reduce((sum, guest) => sum + guest.expenses, 0);
-            
-            // Calculate total number of people (including +1s)
-            const totalPeople = partyData.guests.reduce((sum, guest) => sum + 1 + (guest.plusOnes || 0), 0);
-            
-            // Calculate per-person share
-            const perPersonShare = totalExpenses / totalPeople;
-            
-            let payments = [];
-            
-            if (partyData.mode === 'direct') {
-                // Direct mode calculations
-                const debtors = partyData.guests
-                    .map((guest, index) => {
-                        // Each guest pays for themselves and their +1s
-                        const totalShare = perPersonShare * (1 + (guest.plusOnes || 0));
-                        return {
-                            index,
-                            name: guest.name,
-                            balance: totalShare - guest.expenses,
-                            plusOnes: guest.plusOnes || 0
-                        };
-                    })
-                    .filter(guest => guest.balance > 0)
-                    .sort((a, b) => b.balance - a.balance);
-                
-                const creditors = partyData.guests
-                    .map((guest, index) => {
-                        // Each guest pays for themselves and their +1s
-                        const totalShare = perPersonShare * (1 + (guest.plusOnes || 0));
-                        return {
-                            index,
-                            name: guest.name,
-                            balance: guest.expenses - totalShare,
-                            plusOnes: guest.plusOnes || 0
-                        };
-                    })
-                    .filter(guest => guest.balance > 0)
-                    .sort((a, b) => b.balance - a.balance);
-                
-                // Calculate payments
-                for (const debtor of debtors) {
-                    let remainingDebt = debtor.balance;
-                    
-                    for (let i = 0; i < creditors.length && remainingDebt > 0; i++) {
-                        const creditor = creditors[i];
-                        
-                        if (creditor.balance > 0) {
-                            const payment = Math.min(remainingDebt, creditor.balance);
-                            
-                            payments.push({
-                                from: debtor.index,
-                                to: creditor.index,
-                                amount: payment
-                            });
-                            
-                            remainingDebt -= payment;
-                            creditors[i].balance -= payment;
-                        }
-                    }
-                }
-            } else {
-                // Aggregated mode calculations
-                const keeperIndex = parseInt(partyData.budgetKeeper);
-                
-                partyData.guests.forEach((guest, index) => {
-                    if (index !== keeperIndex) {
-                        // Each guest pays for themselves and their +1s
-                        const totalShare = perPersonShare * (1 + (guest.plusOnes || 0));
-                        const balance = totalShare - guest.expenses;
-                        
-                        if (balance > 0) {
-                            // Guest owes money to the keeper
-                            payments.push({
-                                from: index,
-                                to: keeperIndex,
-                                amount: balance
-                            });
-                        } else if (balance < 0) {
-                            // Keeper owes money to the guest
-                            payments.push({
-                                from: keeperIndex,
-                                to: index,
-                                amount: -balance
-                            });
-                        }
+
+            let finalPayments = [];
+            let usedTreasurer = null;
+
+            if (partyData.autoOptimize) {
+                // AUTO-OPTIMIZATION MODE
+                // Strategy: unified treasurer approach for simplicity
+                // Find who spent the most - they become treasurer
+                const treasurerIndex = findOptimalTreasurer(billsData);
+                usedTreasurer = treasurerIndex;
+
+                // Calculate consolidated balances for all guests across all bills
+                const guestBalances = {};
+                partyData.guests.forEach((_, idx) => {
+                    guestBalances[idx] = 0;
+                });
+
+                billsData.forEach(bd => {
+                    bd.participants.forEach(p => {
+                        const share = bd.perPersonShare * (1 + (p.guest.plusOnes || 0));
+                        guestBalances[p.index] += p.expense - share;
+                    });
+                });
+
+                // Create payments: everyone pays to or receives from treasurer
+                Object.entries(guestBalances).forEach(([idx, balance]) => {
+                    const guestIdx = parseInt(idx);
+                    if (guestIdx === treasurerIndex) return;
+
+                    if (balance < -0.01) {
+                        // Guest owes money
+                        finalPayments.push({
+                            from: guestIdx,
+                            to: treasurerIndex,
+                            amount: Math.round(-balance * 100) / 100
+                        });
+                    } else if (balance > 0.01) {
+                        // Treasurer owes money to guest
+                        finalPayments.push({
+                            from: treasurerIndex,
+                            to: guestIdx,
+                            amount: Math.round(balance * 100) / 100
+                        });
                     }
                 });
+            } else {
+                // MANUAL MODE
+                if (partyData.mode === 'aggregated' && partyData.budgetKeeper === null) {
+                    alert('Выберите казначея для режима "Через казначея"');
+                    return;
+                }
+
+                usedTreasurer = partyData.budgetKeeper;
+
+                if (partyData.billStrategy === 'unified') {
+                    // Unified strategy: same approach across all bills
+                    const guestBalances = {};
+                    partyData.guests.forEach((_, idx) => {
+                        guestBalances[idx] = 0;
+                    });
+
+                    billsData.forEach(bd => {
+                        bd.participants.forEach(p => {
+                            const share = bd.perPersonShare * (1 + (p.guest.plusOnes || 0));
+                            guestBalances[p.index] += p.expense - share;
+                        });
+                    });
+
+                    if (partyData.mode === 'aggregated') {
+                        // Treasurer mode
+                        const treasurerIdx = parseInt(partyData.budgetKeeper);
+                        Object.entries(guestBalances).forEach(([idx, balance]) => {
+                            const guestIdx = parseInt(idx);
+                            if (guestIdx === treasurerIdx) return;
+
+                            if (balance < -0.01) {
+                                finalPayments.push({
+                                    from: guestIdx,
+                                    to: treasurerIdx,
+                                    amount: Math.round(-balance * 100) / 100
+                                });
+                            } else if (balance > 0.01) {
+                                finalPayments.push({
+                                    from: treasurerIdx,
+                                    to: guestIdx,
+                                    amount: Math.round(balance * 100) / 100
+                                });
+                            }
+                        });
+                    } else {
+                        // Direct mode - optimize transactions
+                        const balances = Object.entries(guestBalances).map(([idx, balance]) => ({
+                            index: parseInt(idx),
+                            balance
+                        }));
+                        finalPayments = minimizeTransactionsFromBalances(balances);
+                    }
+                } else {
+                    // Separate strategy: calculate each bill independently
+                    let allPayments = [];
+                    billsData.forEach(bd => {
+                        const billGuests = bd.participants.map(p => ({
+                            ...p.guest,
+                            index: p.index,
+                            expenses: p.expense
+                        }));
+                        const billPayments = minimizeTransactionsBill(billGuests, bd.perPersonShare);
+                        allPayments.push(...billPayments);
+                    });
+                    finalPayments = consolidatePayments(allPayments);
+                }
             }
-            
-            // Round payments to 2 decimal places
-            payments = payments.map(payment => ({
-                ...payment,
-                amount: Math.round(payment.amount * 100) / 100
-            }));
-            
-            // Filter out very small payments (less than 1 ruble)
-            payments = payments.filter(payment => payment.amount >= 1);
-            
+
+            // Filter out small payments
+            finalPayments = finalPayments.filter(p => p.amount >= 1);
+
+            // Calculate totals
+            const overallTotalExpenses = billsData.reduce((sum, bd) => sum + bd.totalExpenses, 0);
+            const overallTotalPeople = partyData.guests.reduce((sum, g) => sum + 1 + (g.plusOnes || 0), 0);
+
             // Display results
-            displayResults(totalExpenses, perPersonShare, payments, totalPeople);
+            displayResults(billsData, finalPayments, overallTotalExpenses, overallTotalPeople, usedTreasurer);
         }
-        
-        // Display calculation results
-        function displayResults(totalExpenses, perPersonShare, payments, totalPeople) {
+
+        // Helper functions for multi-bill payments
+        function minimizeTransactionsBill(guests, perPersonShare) {
+            const balances = guests.map(guest => {
+                const totalShare = perPersonShare * (1 + (guest.plusOnes || 0));
+                return {
+                    index: guest.index,
+                    balance: guest.expenses - totalShare
+                };
+            });
+
+            const debtors = balances.filter(b => b.balance < -0.01).map(b => ({ ...b, balance: -b.balance })).sort((a, b) => b.balance - a.balance);
+            const creditors = balances.filter(b => b.balance > 0.01).sort((a, b) => b.balance - a.balance);
+
+            const payments = [];
+            let i = 0, j = 0;
+            while (i < debtors.length && j < creditors.length) {
+                const payment = Math.min(debtors[i].balance, creditors[j].balance);
+                if (payment > 0.01) {
+                    payments.push({
+                        from: debtors[i].index,
+                        to: creditors[j].index,
+                        amount: Math.round(payment * 100) / 100
+                    });
+                }
+                debtors[i].balance -= payment;
+                creditors[j].balance -= payment;
+                if (debtors[i].balance < 0.01) i++;
+                if (creditors[j].balance < 0.01) j++;
+            }
+            return payments;
+        }
+
+        function calculateDirectPayments(guests, perPersonShare) {
+            // Same logic as minimizeTransactionsBill for now
+            return minimizeTransactionsBill(guests, perPersonShare);
+        }
+
+        function consolidatePayments(payments) {
+            const consolidated = {};
+            payments.forEach(p => {
+                const key = `${p.from}->${p.to}`;
+                if (!consolidated[key]) {
+                    consolidated[key] = { from: p.from, to: p.to, amount: 0 };
+                }
+                consolidated[key].amount += p.amount;
+            });
+            return Object.values(consolidated).map(p => ({
+                ...p,
+                amount: Math.round(p.amount * 100) / 100
+            }));
+        }
+
+        // Minimize transactions from pre-calculated balances
+        function minimizeTransactionsFromBalances(balances) {
+            const debtors = balances
+                .filter(b => b.balance < -0.01)
+                .map(b => ({ ...b, balance: -b.balance }))
+                .sort((a, b) => b.balance - a.balance);
+
+            const creditors = balances
+                .filter(b => b.balance > 0.01)
+                .sort((a, b) => b.balance - a.balance);
+
+            const payments = [];
+            let i = 0, j = 0;
+
+            while (i < debtors.length && j < creditors.length) {
+                const payment = Math.min(debtors[i].balance, creditors[j].balance);
+                if (payment > 0.01) {
+                    payments.push({
+                        from: debtors[i].index,
+                        to: creditors[j].index,
+                        amount: Math.round(payment * 100) / 100
+                    });
+                }
+                debtors[i].balance -= payment;
+                creditors[j].balance -= payment;
+                if (debtors[i].balance < 0.01) i++;
+                if (creditors[j].balance < 0.01) j++;
+            }
+
+            return payments;
+        }
+
+        // Optimized payment algorithm - minimizes number of transactions
+        function minimizeTransactions(guests, perPersonShare) {
+            // Calculate balances for each guest (positive = should receive, negative = should pay)
+            const balances = guests.map((guest, index) => {
+                const totalShare = perPersonShare * (1 + (guest.plusOnes || 0));
+                return {
+                    index,
+                    name: guest.name,
+                    balance: guest.expenses - totalShare,
+                    plusOnes: guest.plusOnes || 0
+                };
+            });
+
+            // Separate debtors and creditors
+            const debtors = balances
+                .filter(b => b.balance < -0.01)
+                .map(b => ({ ...b, balance: -b.balance }))
+                .sort((a, b) => b.balance - a.balance);
+
+            const creditors = balances
+                .filter(b => b.balance > 0.01)
+                .sort((a, b) => b.balance - a.balance);
+
+            const payments = [];
+
+            // Greedy algorithm: match largest debts with largest credits
+            let i = 0, j = 0;
+            while (i < debtors.length && j < creditors.length) {
+                const debtor = debtors[i];
+                const creditor = creditors[j];
+
+                const payment = Math.min(debtor.balance, creditor.balance);
+
+                if (payment > 0.01) {
+                    payments.push({
+                        from: debtor.index,
+                        to: creditor.index,
+                        amount: Math.round(payment * 100) / 100
+                    });
+                }
+
+                debtor.balance -= payment;
+                creditor.balance -= payment;
+
+                if (debtor.balance < 0.01) i++;
+                if (creditor.balance < 0.01) j++;
+            }
+
+            return payments;
+        }
+
+        // Display calculation results (multi-bill support)
+        function displayResults(billsData, payments, totalExpenses, totalPeople, treasurerIndex) {
             let html = `
                 <h2><i class="fas fa-receipt"></i> Результаты расчета</h2>
                 <div class="summary-card">
                     <p>Общие расходы: <strong>${totalExpenses.toLocaleString('ru-RU')} ₽</strong></p>
                     <p>Всего гостей (включая +1): <strong>${totalPeople}</strong></p>
-                    <p>Доля на человека: <strong>${perPersonShare.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₽</strong></p>
-                </div>
             `;
-            
+
+            if (treasurerIndex !== null && treasurerIndex !== undefined) {
+                const treasurer = partyData.guests[treasurerIndex];
+                if (treasurer) {
+                    html += `<p><i class="fas fa-user-tie"></i> Казначей: <strong>${treasurer.name}</strong></p>`;
+                }
+            }
+
+            html += `</div>`;
+
+            // Show each bill's summary if more than one bill
+            if (billsData.length > 1) {
+                html += `<h3><i class="fas fa-file-invoice"></i> Детали по счетам:</h3>`;
+                billsData.forEach(bd => {
+                    html += `
+                        <div class="bill-summary">
+                            <strong>${bd.bill.name}:</strong> ${bd.totalExpenses.toLocaleString('ru-RU')} ₽
+                            (${bd.totalPeople} чел., ${bd.perPersonShare.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₽/чел.)
+                        </div>
+                    `;
+                });
+            }
+
             if (payments.length === 0) {
                 html += `
                     <div class="summary-card">
-                        <p>Все гости потратили одинаковую сумму. Никаких платежей не требуется.</p>
+                        <p><i class="fas fa-check-circle"></i> Все гости потратили одинаковую сумму. Никаких платежей не требуется.</p>
                     </div>
                 `;
             } else {
-                html += `<h3><i class="fas fa-exchange-alt"></i> Кто кому должен заплатить:</h3>`;
-                
+                html += `
+                    <h3><i class="fas fa-exchange-alt"></i> Итоговые платежи:</h3>
+                    <div class="transactions-info">
+                        <p><i class="fas fa-info-circle"></i> Всего транзакций: <strong>${payments.length}</strong></p>
+                    </div>
+                `;
+
                 payments.forEach(payment => {
                     const fromGuest = partyData.guests[payment.from];
                     const toGuest = partyData.guests[payment.to];
-                    
-                    // Display name with +1 count if applicable
+
                     const fromGuestDisplay = fromGuest.plusOnes > 0
                         ? `${fromGuest.name} (+${fromGuest.plusOnes})`
                         : fromGuest.name;
-                    
+
                     const toGuestDisplay = toGuest.plusOnes > 0
                         ? `${toGuest.name} (+${toGuest.plusOnes})`
                         : toGuest.name;
-                    
+
                     html += `
                         <div class="payment-instruction">
                             <span>${fromGuestDisplay}</span>
@@ -580,11 +1139,99 @@
                     `;
                 });
             }
-            
+
+            html += `
+                <div class="export-section">
+                    <button id="export-messenger" class="btn-export">
+                        <i class="fas fa-share-alt"></i> Экспорт для мессенджера
+                    </button>
+                </div>
+            `;
+
             resultsEl.innerHTML = html;
-            resultsEl.style.display = 'block';
+
+            // Add export button handler
+            const exportBtn = document.getElementById('export-messenger');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', () => exportForMessenger(billsData, payments));
+            }
         }
-        
+
+        // Export for messenger (multi-bill support)
+        function exportForMessenger(billsData, payments) {
+            let text = '🎉 Расчет расходов на вечеринку\n\n';
+
+            // Export each bill
+            billsData.forEach((bd, idx) => {
+                text += '━━━━━━━━━━━━━━━━━━━━━━\n';
+                text += `📋 ${bd.bill.name}\n\n`;
+
+                // Participants for this bill
+                const billParticipants = bd.participants.map(p => {
+                    return p.guest.plusOnes > 0 ? `${p.guest.name} (+${p.guest.plusOnes})` : p.guest.name;
+                });
+                text += `👥 Участники: ${billParticipants.join(', ')}\n\n`;
+
+                // Expenses for this bill
+                text += '💰 Расходы:\n';
+                bd.participants.forEach(p => {
+                    const guestName = p.guest.plusOnes > 0 ? `${p.guest.name} (+${p.guest.plusOnes})` : p.guest.name;
+                    const expense = bd.bill.expenses[p.index];
+                    if (expense && expense.expression) {
+                        text += `• ${guestName}: ${expense.expression} = ${expense.amount.toLocaleString('ru-RU')} ₽\n`;
+                    } else {
+                        text += `• ${guestName}: ${expense ? expense.amount.toLocaleString('ru-RU') : 0} ₽\n`;
+                    }
+                });
+
+                // Summary for this bill
+                text += `\n📈 Итого: ${bd.totalExpenses.toLocaleString('ru-RU')} ₽\n`;
+                text += `💵 Доля на человека: ${bd.perPersonShare.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₽\n\n`;
+            });
+
+            // Final consolidated payments
+            if (payments.length === 0) {
+                text += '✅ Все гости потратили одинаковую сумму.\nНикаких платежей не требуется.\n';
+            } else {
+                text += '━━━━━━━━━━━━━━━━━━━━━━\n';
+                text += '💸 ИТОГОВЫЕ ПЛАТЕЖИ:\n\n';
+
+                payments.forEach(payment => {
+                    const fromGuest = partyData.guests[payment.from];
+                    const toGuest = partyData.guests[payment.to];
+
+                    const fromGuestDisplay = fromGuest.plusOnes > 0
+                        ? `${fromGuest.name} (+${fromGuest.plusOnes})`
+                        : fromGuest.name;
+
+                    const toGuestDisplay = toGuest.plusOnes > 0
+                        ? `${toGuest.name} (+${toGuest.plusOnes})`
+                        : toGuest.name;
+
+                    text += `${fromGuestDisplay} → ${toGuestDisplay}: ${payment.amount.toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ₽\n`;
+                });
+
+                text += `\n✅ Всего транзакций: ${payments.length}\n`;
+            }
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(text).then(() => {
+                // Show success notification
+                const exportBtn = document.getElementById('export-messenger');
+                const originalText = exportBtn.innerHTML;
+                exportBtn.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
+                exportBtn.style.backgroundColor = '#4CAF50';
+
+                setTimeout(() => {
+                    exportBtn.innerHTML = originalText;
+                    exportBtn.style.backgroundColor = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Не удалось скопировать в буфер обмена. Попробуйте еще раз.');
+            });
+        }
+
         // Event listeners
         addGuestBtn.addEventListener('click', addGuest);
         
@@ -596,29 +1243,53 @@
             }
         });
         
+        // Auto-optimize checkbox change
+        if (autoOptimizeCheckbox) {
+            autoOptimizeCheckbox.addEventListener('change', (e) => {
+                partyData.autoOptimize = e.target.checked;
+                manualSettingsDiv.style.display = e.target.checked ? 'none' : 'block';
+                saveToStorage();
+                scheduleRecalculation();
+            });
+        }
+
+        // Bill strategy change
+        for (const radio of billStrategyRadios) {
+            radio.addEventListener('change', (e) => {
+                partyData.billStrategy = e.target.value;
+                saveToStorage();
+                scheduleRecalculation();
+            });
+        }
+
         // Mode selection change
         for (const radio of modeRadios) {
             radio.addEventListener('change', (e) => {
                 partyData.mode = e.target.value;
-                budgetKeeperContainer.style.display = partyData.mode === 'aggregated' ? 'block' : 'none';
+                updateBudgetKeeperVisibility();
                 saveToStorage();
+                scheduleRecalculation();
             });
         }
-        
+
         // Budget keeper selection change
         budgetKeeperSelect.addEventListener('change', (e) => {
             partyData.budgetKeeper = e.target.value ? parseInt(e.target.value) : null;
             saveToStorage();
+            scheduleRecalculation();
         });
-        
+
         // Initialize
         loadFromStorage();
-        
+
         // Add initial guests if none exist
         if (partyData.guests.length === 0) {
             addGuest();
             addGuest();
         }
+
+        // Initial calculation or placeholder
+        autoCalculate();
     </script>
 </body>
 </html>
