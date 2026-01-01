@@ -457,6 +457,13 @@
         
         // Remove a guest
         function removeGuest(index) {
+            const guest = partyData.guests[index];
+            const guestName = guest.name || 'этого гостя';
+
+            if (!confirm(`Удалить ${guestName}?`)) {
+                return;
+            }
+
             partyData.guests.splice(index, 1);
 
             // Remove from all bills and adjust indices
@@ -558,16 +565,35 @@
                                     inputWrapper.appendChild(resultDisplay);
                                 }
                                 resultDisplay.textContent = `= ${numericResult} ₽`;
+                                resultDisplay.style.color = ''; // Reset error color
                             }
                         }
                     }
                 } catch (e) {
                     console.error('Error calculating expression:', e);
-                    // If calculation fails, just use the input as is
+                    // Show error in UI
                     activeBill.expenses[index] = {
-                        amount: parseFloat(expenses) || 0,
+                        amount: 0,
                         expression: null
                     };
+
+                    const guestRow = document.querySelectorAll('.guest-row')[index];
+                    if (guestRow) {
+                        const expenseContainer = guestRow.querySelector('.expense-container');
+                        if (expenseContainer) {
+                            const inputWrapper = expenseContainer.querySelector('.expense-input-wrapper');
+                            if (inputWrapper) {
+                                let resultDisplay = inputWrapper.querySelector('.expense-result');
+                                if (!resultDisplay) {
+                                    resultDisplay = document.createElement('span');
+                                    resultDisplay.className = 'expense-result';
+                                    inputWrapper.appendChild(resultDisplay);
+                                }
+                                resultDisplay.textContent = '⚠ Ошибка';
+                                resultDisplay.style.color = 'var(--danger)';
+                            }
+                        }
+                    }
                 }
             } else {
                 // Regular number input
@@ -575,6 +601,21 @@
                     amount: parseFloat(expenses) || 0,
                     expression: null
                 };
+
+                // Remove error display if exists
+                const guestRow = document.querySelectorAll('.guest-row')[index];
+                if (guestRow) {
+                    const expenseContainer = guestRow.querySelector('.expense-container');
+                    if (expenseContainer) {
+                        const inputWrapper = expenseContainer.querySelector('.expense-input-wrapper');
+                        if (inputWrapper) {
+                            const resultDisplay = inputWrapper.querySelector('.expense-result');
+                            if (resultDisplay) {
+                                inputWrapper.removeChild(resultDisplay);
+                            }
+                        }
+                    }
+                }
             }
             saveToStorage();
             scheduleRecalculation();
@@ -696,17 +737,54 @@
                     updateGuestExpenses(index, e.target.value);
                 });
 
-                // Plus ones input
+                // Plus ones input with controls
+                const plusOnesContainer = document.createElement('div');
+                plusOnesContainer.className = 'guest-plus-ones';
+
                 const plusOnesInput = document.createElement('input');
                 plusOnesInput.type = 'number';
-                plusOnesInput.className = 'guest-plus-ones';
-                plusOnesInput.placeholder = '+1';
+                plusOnesInput.className = 'plusone-input';
+                plusOnesInput.placeholder = '0';
                 plusOnesInput.min = '0';
                 plusOnesInput.value = guest.plusOnes || 0;
                 plusOnesInput.title = 'Количество дополнительных гостей (+1)';
-                plusOnesInput.addEventListener('input', (e) => {
+                plusOnesInput.addEventListener('change', (e) => {
                     updateGuestPlusOnes(index, e.target.value);
                 });
+
+                const minusBtn = document.createElement('button');
+                minusBtn.className = 'plusone-btn plusone-minus';
+                minusBtn.innerHTML = '−';
+                minusBtn.type = 'button';
+                minusBtn.onclick = (e) => {
+                    e.preventDefault();
+                    const current = parseInt(plusOnesInput.value) || 0;
+                    if (current > 0) {
+                        const newValue = current - 1;
+                        plusOnesInput.value = newValue;
+                        updateGuestPlusOnes(index, newValue);
+                    }
+                };
+
+                const plusBtn = document.createElement('button');
+                plusBtn.className = 'plusone-btn plusone-plus';
+                plusBtn.innerHTML = '+';
+                plusBtn.type = 'button';
+                plusBtn.onclick = (e) => {
+                    e.preventDefault();
+                    const current = parseInt(plusOnesInput.value) || 0;
+                    const newValue = current + 1;
+                    plusOnesInput.value = newValue;
+                    updateGuestPlusOnes(index, newValue);
+                };
+
+                const controlsDiv = document.createElement('div');
+                controlsDiv.className = 'plusone-controls';
+                controlsDiv.appendChild(minusBtn);
+                controlsDiv.appendChild(plusBtn);
+
+                plusOnesContainer.appendChild(plusOnesInput);
+                plusOnesContainer.appendChild(controlsDiv);
 
                 // Remove button
                 const removeBtn = document.createElement('button');
@@ -719,7 +797,7 @@
                 guestRow.appendChild(participateDiv);
                 guestRow.appendChild(nameInput);
                 guestRow.appendChild(expenseContainer);
-                guestRow.appendChild(plusOnesInput);
+                guestRow.appendChild(plusOnesContainer);
                 guestRow.appendChild(removeBtn);
 
                 guestListEl.appendChild(guestRow);

@@ -241,6 +241,10 @@ h3 {
     accent-color: var(--primary);
 }
 
+.plusone-controls {
+    display: none;
+}
+
 input[type="text"],
 input[type="number"] {
     width: 100%;
@@ -739,16 +743,71 @@ select:focus {
         background: var(--gray-50);
         border-radius: 6px;
         margin-bottom: 8px;
+        position: relative;
     }
 
     .guest-participate {
-        order: -1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .guest-participate::before {
+        content: 'Участвует';
+        font-size: 13px;
+        color: var(--gray-600);
     }
 
     .btn-remove {
-        position: absolute;
-        top: 12px;
-        right: 12px;
+        width: 100%;
+        margin-top: 4px;
+    }
+
+    .guest-plus-ones {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .guest-plus-ones::before {
+        content: '+1:';
+        font-size: 13px;
+        color: var(--gray-600);
+        font-weight: 500;
+    }
+
+    .guest-plus-ones input {
+        flex: 1;
+        text-align: center;
+    }
+
+    .plusone-controls {
+        display: flex !important;
+        gap: 4px;
+    }
+
+    .plusone-btn {
+        width: 32px;
+        height: 32px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+    }
+
+    .plusone-btn:hover {
+        background: var(--primary-hover);
+    }
+
+    .plusone-btn:active {
+        transform: scale(0.95);
     }
 
     .expense-hint {
@@ -761,6 +820,10 @@ select:focus {
     }
 
     .action-buttons {
+        flex-direction: column;
+    }
+
+    .export-section {
         flex-direction: column;
     }
 }
